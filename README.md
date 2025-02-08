@@ -1,4 +1,3 @@
-# stack-game
 # Stack Game (Pygame Recreation)
 
 A recreation of the classic **Stack** game using **Pygame**. The objective is to stack blocks as accurately as possible to build the highest tower!
