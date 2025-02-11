@@ -2,8 +2,8 @@ import pygame
 
 pygame.init()
 
-windowWidth = 800
-windowHeight = 800
+windowWidth = 750
+windowHeight = 1000
 
 windowRes = (windowWidth, windowHeight)
 screen = pygame.display.set_mode(windowRes)
@@ -13,17 +13,23 @@ pygame.display.set_caption("Stack!")
 PHEIGHT = 2.5 #platform height
 ISO_MULTIPLIER = 10
 
+def lightenColor(rgb, factor=1.2):
+    return tuple(min(255, int(c * factor)) for c in rgb)
+
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
-    def __init__(self, width, depth, color=None):
+    def __init__(self, width, depth, rgb):
         self.width = width
         self.depth = depth
         self.height = PHEIGHT
-        self.color = color
-        self.colors = [(255,0,0), (0,255,0), (0,0,255)]
+        self.leaningFactor = 0.9
+        self.colors = self.defineColors(rgb)
         self.vertices = self.defineVertices()
         self.edges = self.defineVisibleEdges()
         self.faces = self.defineFaces()
+
+    def defineColors(self, rgb):
+        return [lightenColor(rgb, 1.3), lightenColor(rgb, .7), rgb]
 
     def defineVertices(self):
         vertices = [(x, y, z)
@@ -57,14 +63,14 @@ class Platform:
 
     def defineFaces(self):
         visible_faces = [
-            (1,3,7,5),
-            (2,3,7,6),
-            (4,5,7,6)
+            (1,3,7,5), #top face
+            (2,3,7,6), #left face
+            (4,5,7,6)  #right face
         ]
         return visible_faces
-    
+
     def convertToIsometric(self, x, y ,z):
-        iso_x = x - y
+        iso_x = (x - y) * self.leaningFactor
         iso_y = (x + y) / 2 - z
         return iso_x, iso_y
     
@@ -98,7 +104,7 @@ class Platform:
 
             pygame.draw.line(screen, (255, 255, 255), (iso_x1, iso_y1), (iso_x2, iso_y2), 2)
 
-plat = Platform(10, 10)
+plat = Platform(10, 10, (100, 50, 150))
 
 clock = pygame.time.Clock()
 running = True
