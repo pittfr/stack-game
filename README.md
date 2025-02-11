@@ -2,14 +2,6 @@
 
 A recreation of the classic **Stack** game using **Pygame**. The objective is to stack blocks as accurately as possible to build the highest tower!
 
-## Features
-
-- **Smooth block movement**
-- **Pixel-perfect collision detection**
-- **Increasing difficulty** as the game progresses
-- **Simple but addictive gameplay**
-- **Customizable colors and speeds**
-
 ## Installation
 
 Ensure you have **Python 3** installed on your system. Then, install the required dependencies:
@@ -33,16 +25,6 @@ pip install pygame
 
 - **Spacebar** / **Mouse Click** - Places the moving block
 - **Escape** - Quits the game
-
-## Screenshots
-*(Add some screenshots here to showcase your game!)*
-
-## Customization
-
-You can tweak the game mechanics in `stack_game.py`:
-
-- Adjust block speed, colors, and difficulty
-- Modify screen size and animations
 
 ## Contributing
 
