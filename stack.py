@@ -33,13 +33,13 @@ class Platform:
         
         return vertices
     
-    def defineEdges(self):
+    '''def defineEdges(self):
         edges = [(i, j) 
             for i, v1 in enumerate(self.vertices) 
             for j, v2 in enumerate(self.vertices) 
             if i < j and sum(a != b for a, b in zip(v1, v2)) == 1]
         
-        return edges
+        return edges'''
     
     def defineVisibleEdges(self):
         visible_edges = [
@@ -57,7 +57,7 @@ class Platform:
 
     def defineFaces(self):
         visible_faces = [
-            (1,7,1,5),
+            (1,3,7,5),
             (2,3,7,6),
             (4,5,7,6)
         ]
@@ -68,26 +68,19 @@ class Platform:
         iso_y = (x + y) / 2 - z
         return iso_x, iso_y
     
-    def draw(self):
-        vertices = [self.vertices[i] for i in self.faces[0]]
-        iso_vertices = [self.convertToIsometric(x * ISO_MULTIPLIER, y * ISO_MULTIPLIER, z * ISO_MULTIPLIER) for x,y,z in vertices]
-        iso_vertices = [(x + windowWidth // 2, y + windowHeight//2) for x, y in iso_vertices]
-
-        pygame.draw.polygon(screen, self.colors[0], iso_vertices)
-        
-        '''for face, color in zip(self.faces, self.colors):
-            # Get the 3D coordinates of the vertices making up the face
+    def drawFaces(self):       
+        for face, color in zip(self.faces, self.colors):
+            #make an array with each faces' vertices
             vertices = [self.vertices[i] for i in face]
-            
-            # Convert the 3D vertices to 2D isometric coordinates
+            #converting them to isometric projection
             iso_vertices = [self.convertToIsometric(x * ISO_MULTIPLIER, y * ISO_MULTIPLIER, z * ISO_MULTIPLIER) 
                             for x, y, z in vertices]
-            
-            # Offset the vertices to the center of the screen
+            #adding some padding so they get centered
             iso_vertices = [(x + windowWidth // 2, y + windowHeight // 2) for x, y in iso_vertices]
-            
-            # Draw the polygon (face) using the converted isometric coordinates
-            pygame.draw.polygon(screen, color, iso_vertices)'''
+
+            pygame.draw.polygon(screen, color, iso_vertices)
+
+    def drawEdges(self):
         for edge in self.edges:
             #get the 3D coords from 2 vertices
             x1, y1, z1 = self.vertices[edge[0]]
@@ -117,7 +110,7 @@ while running:
 
     screen.fill((0, 0, 0))
 
-    plat.draw()
+    plat.drawFaces()
 
     pygame.display.flip()
 
