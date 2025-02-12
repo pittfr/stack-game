@@ -19,22 +19,25 @@ class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
     def __init__(self, width, depth, rgb, moving): #moving can either be true or false (part of the tower)
         self.moving = moving
+
         self.width = width
         self.depth = depth
         self.height = PHEIGHT
+
         self.leaningFactor = 0.9
-        if(self.moving):
-            self.colors = self.defineColors(rgb)
-            self.vertices = self.defineVertices()
-            self.edges = self.defineVisibleEdges()
-            self.faces = self.defineFaces()
-        else:
-            self.colors = rgb
+
+        self.colors = self.defineColors(rgb)
+        self.vertices = self.defineVertices()
+        self.edges = self.defineVisibleEdges()
+        self.faces = self.defineFaces()
 
     def defineColors(self, rgb):
-        def lightenColor(rgb, factor=1.2):
-            return tuple(min(255, int(c * factor)) for c in rgb)
-        return [lightenColor(rgb, 1.3), lightenColor(rgb, .7), rgb]
+        if self.moving:
+            def lightenColor(rgb, factor=1.2):
+                return tuple(min(255, int(c * factor)) for c in rgb)
+            return [lightenColor(rgb, 1.3), lightenColor(rgb, .7), rgb]
+        else:
+            return rgb
 
     def defineVertices(self):
         vertices = [(x, y, z)
@@ -53,26 +56,32 @@ class Platform:
         return edges'''
     
     def defineVisibleEdges(self):
-        visible_edges = [
-            (1,3),
-            (1,5),
-            (2,3),
-            (2,6),
-            (3,7),
-            (4,5),
-            (4,6),
-            (5,7),
-            (6,7)
-        ]
-        return visible_edges
+        if(self.moving):
+            visible_edges = [
+                (1,3),
+                (1,5),
+                (2,3),
+                (2,6),
+                (3,7),
+                (4,5),
+                (4,6),
+                (5,7),
+                (6,7)
+            ]
+            return visible_edges
+        else:
+            return
 
     def defineFaces(self):
-        visible_faces = [
-            (1,3,7,5), #top face
-            (2,3,7,6), #left face
-            (4,5,7,6)  #right face
-        ]
-        return visible_faces
+        if self.moving:
+            visible_faces = [
+                (1,3,7,5), #top face
+                (2,3,7,6), #left face
+                (4,5,7,6)  #right face
+            ]
+            return visible_faces
+        else:
+            return
 
     def convertToIsometric(self, x, y ,z):
         iso_x = (x - y) * self.leaningFactor
