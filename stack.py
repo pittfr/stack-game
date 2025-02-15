@@ -8,21 +8,26 @@ windowWidth = 750
 windowHeight = 1000
 
 windowRes = (windowWidth, windowHeight)
-screen = pygame.display.set_mode(windowRes)
+screen = pygame.display.set_mode(windowRes, pygame.RESIZABLE)
 
 pygame.display.set_caption("Stack!")
 
+SPHEIGHT = 3.5 #starting platform height
 PHEIGHT = 2.5 #platform height
+NSPLATS = 4 #number of starting platforms
+SBASEWIDTH = 12.5
+SBASEDEPTH = 12.5
+
 ISO_MULTIPLIER = 25
 
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
-    def __init__(self, width, depth, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
+    def __init__(self, width, depth, height, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
 
         self.width = width
         self.depth = depth
-        self.height = PHEIGHT
+        self.height = height
         self.z_offset = z_offset
 
         self.leaningFactor = 0.7
@@ -53,7 +58,7 @@ class Platform:
         #generating the actual grid
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
-        vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
+        vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(float)
 
         if(not self.moving):
             vertices[:, 2] -= self.z_offset
@@ -161,8 +166,8 @@ class Tower:
             return (getRgb(r), getRgb(g), getRgb(b))
 
         for i in range(self.numPlats):
-            z_offset = self.numPlats * PHEIGHT - (i) * PHEIGHT
-            platform = Platform(10, 10, False, z_offset)
+            z_offset = self.numPlats * SPHEIGHT - (i) * SPHEIGHT
+            platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
             platform.setup(getGradientColor(self.initialColor, self.numPlats, i))
             platforms.append(platform)
         
@@ -172,8 +177,7 @@ class Tower:
         return self.platforms
 
     def update(self):
-        for i in range(len(self.platforms)):
-            print(str(i) + "->" + str(self.platforms[i].colors))
+        
         '''for plat in (self.platforms):
             for i in range(len(plat.vertices)):  
                 plat.vertices[i][2] -= 0.1
@@ -185,11 +189,9 @@ class Tower:
         for plat in (self.platforms):
             plat.drawFaces()
 
-nPlatforms = 4
-
-plat = Platform(10, 10, True)
+plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup((200,100,255))
-tower = Tower(nPlatforms, (100, 50, 150))
+tower = Tower(NSPLATS, (100, 50, 150))
 
 clock = pygame.time.Clock()
 running = True
@@ -205,7 +207,7 @@ while running:
 
     tower.drawTower()
 
-    plat.update()
+    #plat.update()
     plat.drawEdges()
     pygame.display.flip()
 
