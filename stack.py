@@ -13,11 +13,11 @@ screen = pygame.display.set_mode(windowRes)
 pygame.display.set_caption("Stack!")
 
 PHEIGHT = 2.5 #platform height
-ISO_MULTIPLIER = 20
+ISO_MULTIPLIER = 25
 
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
-    def __init__(self, width, depth, moving, z_offset): #moving can either be true or false (false means the platform is a part of the tower)
+    def __init__(self, width, depth, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
 
         self.width = width
@@ -25,7 +25,7 @@ class Platform:
         self.height = PHEIGHT
         self.z_offset = z_offset
 
-        self.leaningFactor = 0.9
+        self.leaningFactor = 0.7
 
         self.colors = None
         self.vertices = None
@@ -56,7 +56,7 @@ class Platform:
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
 
         if(not self.moving):
-            vertices[:, 2] += self.z_offset
+            vertices[:, 2] -= self.z_offset
 
         return vertices
         '''if(self.moving):
@@ -137,13 +137,16 @@ class Platform:
 
             pygame.draw.line(screen, (255, 255, 255), (iso_x1, iso_y1), (iso_x2, iso_y2), 2)
 
+    def update(self):
+        for i in range(len(self.vertices)):
+            self.vertices[i][1] += .1
+
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
         self.numPlats = num
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
         
-
     def setupStartingPlatforms(self):
         platforms = []
 
@@ -158,7 +161,7 @@ class Tower:
             return (getRgb(r), getRgb(g), getRgb(b))
 
         for i in range(self.numPlats):
-            z_offset = (i + 1) * PHEIGHT
+            z_offset = self.numPlats * PHEIGHT - (i) * PHEIGHT
             platform = Platform(10, 10, False, z_offset)
             platform.setup(getGradientColor(self.initialColor, self.numPlats, i))
             platforms.append(platform)
@@ -169,23 +172,29 @@ class Tower:
         return self.platforms
 
     def update(self):
-        for plat in self.platforms:
+        for i in range(len(self.platforms)):
+            print(str(i) + "->" + str(self.platforms[i].colors))
+        '''for plat in (self.platforms):
             for i in range(len(plat.vertices)):  
                 plat.vertices[i][2] -= 0.1
             plat.defineVisibleEdges()
-            plat.defineFaces()
+            plat.defineFaces()'''
 
     def drawTower(self):
-        
-        for plat in self.platforms:
+        #self.update()
+        for plat in (self.platforms):
             plat.drawFaces()
 
 nPlatforms = 4
 
-tower = Tower(nPlatforms, (255, 0, 0))
+plat = Platform(10, 10, True)
+plat.setup((200,100,255))
+tower = Tower(nPlatforms, (100, 50, 150))
 
 clock = pygame.time.Clock()
 running = True
+
+tower.update()
 
 while running:
     for event in pygame.event.get():
@@ -196,6 +205,8 @@ while running:
 
     tower.drawTower()
 
+    plat.update()
+    plat.drawEdges()
     pygame.display.flip()
 
     clock.tick(60)
