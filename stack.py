@@ -8,7 +8,7 @@ windowWidth = 750
 windowHeight = 1000
 
 windowRes = (windowWidth, windowHeight)
-screen = pygame.display.set_mode(windowRes, pygame.RESIZABLE)
+screen = pygame.display.set_mode(windowRes)
 
 pygame.display.set_caption("Stack!")
 
@@ -177,21 +177,21 @@ class Tower:
         return self.platforms
 
     def update(self):
-        
+        pass
         '''for plat in (self.platforms):
             for i in range(len(plat.vertices)):  
                 plat.vertices[i][2] -= 0.1
             plat.defineVisibleEdges()
             plat.defineFaces()'''
 
-    def drawTower(self):
+    def draw(self):
         #self.update()
         for plat in (self.platforms):
             plat.drawFaces()
 
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup((200,100,255))
-tower = Tower(NSPLATS, (100, 50, 150))
+tower = Tower(NSPLATS, (100, 150, 50))
 
 clock = pygame.time.Clock()
 running = True
@@ -205,9 +205,10 @@ while running:
 
     screen.fill((0, 0, 0))
 
-    tower.drawTower()
+    tower.update()
+    tower.draw()
 
-    #plat.update()
+    plat.update()
     plat.drawEdges()
     pygame.display.flip()
 
