@@ -185,13 +185,13 @@ class Tower:
             plat.defineFaces()'''
 
     def draw(self):
-        #self.update()
+        self.update()
         for plat in (self.platforms):
             plat.drawFaces()
 
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup((200,100,255))
-tower = Tower(NSPLATS, (100, 150, 50))
+tower = Tower(NSPLATS, (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200)))
 
 clock = pygame.time.Clock()
 running = True
@@ -205,7 +205,6 @@ while running:
 
     screen.fill((0, 0, 0))
 
-    tower.update()
     tower.draw()
 
     plat.update()
