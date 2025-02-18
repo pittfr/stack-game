@@ -13,10 +13,11 @@ screen = pygame.display.set_mode(windowRes)
 pygame.display.set_caption("Stack!")
 
 SPHEIGHT = 3.5 #starting platform height
-PHEIGHT = 2.5 #platform height
+PHEIGHT = 3 #platform height
 NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5
 SBASEDEPTH = 12.5
+MINCVALUE, MAXCVALUE = 100, 220 #MINIMUM AND MAXIMUM COLOR VALUES
 
 ISO_MULTIPLIER = 25
 
@@ -173,6 +174,9 @@ class Tower:
         
         return platforms
     
+    def getNumPlats(self):
+        return self.numPlats
+
     def getTowers(self):
         return self.platforms
 
@@ -191,7 +195,8 @@ class Tower:
 
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup((200,100,255))
-tower = Tower(NSPLATS, (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200)))
+initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+tower = Tower(NSPLATS, initialColor)
 
 clock = pygame.time.Clock()
 running = True
@@ -207,7 +212,7 @@ while running:
 
     tower.draw()
 
-    plat.update()
+    #plat.update()
     plat.drawEdges()
     pygame.display.flip()
 
