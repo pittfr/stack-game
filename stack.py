@@ -21,6 +21,24 @@ MINCVALUE, MAXCVALUE = 100, 220 #MINIMUM AND MAXIMUM COLOR VALUES
 
 ISO_MULTIPLIER = 25
 
+def getGradientColor(startingColor, targetColor, numSteps, index):
+    #s stands for "starting"; t stands for "target"
+    r, g, b = startingColor
+    tr, tg, tb = targetColor
+
+    def getRgb(svalue, tvalue): 
+        diff = tvalue - svalue
+        offset = diff * (index / (numSteps))
+        value = svalue + offset
+        value = max(0, min(255, int(value)))
+        return value
+
+        '''offset = value / (numSteps + 1)
+        value = max(0, int((offset * (index + 1)))) #make it so the value cant be less than 0
+        return min(255, value) #value cant be more than 255'''
+    
+    return (getRgb(r, tr), getRgb(g, tg), getRgb(b, tb))
+
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
     def __init__(self, width, depth, height, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
@@ -155,21 +173,11 @@ class Tower:
         
     def setupStartingPlatforms(self):
         platforms = []
-
-        def getGradientColor(color, num, index):
-            r, g, b = color
-
-            def getRgb(value):
-                offset = value / (num + 1)
-                value = max(0, int((offset * (index + 1)))) #make it so the value cant be less than 0
-                return min(255, value) #value cant be more than 255
-            
-            return (getRgb(r), getRgb(g), getRgb(b))
-
+        
         for i in range(self.numPlats):
             z_offset = self.numPlats * SPHEIGHT - (i) * SPHEIGHT
             platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
-            platform.setup(getGradientColor(self.initialColor, self.numPlats, i))
+            platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numPlats, i))
             platforms.append(platform)
         
         return platforms
@@ -193,9 +201,13 @@ class Tower:
         for plat in (self.platforms):
             plat.drawFaces()
 
+initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+
+colors = []
+colors.append(initialColor)
+
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup((200,100,255))
-initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
 tower = Tower(NSPLATS, initialColor)
 
 clock = pygame.time.Clock()
