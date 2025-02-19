@@ -51,7 +51,7 @@ class Platform:
         self.height = height
         self.z_offset = z_offset
 
-        self.leaningFactor = 0.7
+        self.leaningFactor = 0.65
 
         self.colors = None
         self.vertices = None
@@ -83,10 +83,10 @@ class Platform:
         
         global numPlats
         
-        if(self.moving and numPlats % 2 == 1):
+        '''if(self.moving and numPlats % 2 == 1):
             vertices[:, 0] -= 25
         elif(self.moving and numPlats % 2 == 0):
-            vertices[:, 1] -= 25
+            vertices[:, 1] -= 25'''
 
         if(not self.moving):
             vertices[:, 2] -= self.z_offset
@@ -191,7 +191,15 @@ class Tower:
             platforms.append(platform)
         
         return platforms
-    
+
+    def add(self, plat):
+        plat.moving = False
+        self.platforms.append(plat)
+
+        for platform in self.platforms:
+            platform.vertices[:, 2] -= plat.height
+            
+
     def getNumPlats(self):
         return len(self.platforms)
 
@@ -229,8 +237,17 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            pass
+
+    current_mouse_state = pygame.mouse.get_pressed()
+
+    if current_mouse_state[0] and not previous_mouse_state[0]:
+        #mouse clicked
+        tower.add(plat)
+        plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
+        plat.setup((random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE)))
+        pass
+
+    previous_mouse_state = current_mouse_state
 
     screen.fill((0, 0, 0))
 
