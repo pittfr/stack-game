@@ -167,23 +167,23 @@ class Platform:
 
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
-        self.numPlats = num
+        self.numStartingPlats = num
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
         
     def setupStartingPlatforms(self):
         platforms = []
         
-        for i in range(self.numPlats):
-            z_offset = self.numPlats * SPHEIGHT - (i) * SPHEIGHT
+        for i in range(self.numStartingPlats):
+            z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT
             platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
-            platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numPlats, i))
+            platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numStartingPlats, i))
             platforms.append(platform)
         
         return platforms
     
     def getNumPlats(self):
-        return self.numPlats
+        return len(self.platforms)
 
     def getTowers(self):
         return self.platforms
