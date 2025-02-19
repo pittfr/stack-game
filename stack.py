@@ -26,10 +26,10 @@ def getGradientColor(startingColor, targetColor, numSteps, index):
     r, g, b = startingColor
     tr, tg, tb = targetColor
 
-    def getRgb(svalue, tvalue): 
+    def getRgb(svalue, tvalue):
         diff = tvalue - svalue
-        offset = diff * (index / (numSteps))
-        value = svalue + offset
+        offset = diff / (numSteps + 1)
+        value = svalue + (offset * (index + 1))
         value = max(0, min(255, int(value)))
         return value
 
