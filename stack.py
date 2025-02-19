@@ -13,13 +13,15 @@ screen = pygame.display.set_mode(windowRes)
 pygame.display.set_caption("Stack!")
 
 SPHEIGHT = 3.5 #starting platform height
-PHEIGHT = 3 #platform height
+PHEIGHT = 2.75 #platform height
 NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5
 SBASEDEPTH = 12.5
 MINCVALUE, MAXCVALUE = 100, 220 #MINIMUM AND MAXIMUM COLOR VALUES
 
 ISO_MULTIPLIER = 25
+
+numPlats = NSPLATS
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
     #s stands for "starting"; t stands for "target"
@@ -78,9 +80,17 @@ class Platform:
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(float)
+        
+        global numPlats
+        
+        if(self.moving and numPlats % 2 == 1):
+            vertices[:, 0] -= 25
+        elif(self.moving and numPlats % 2 == 0):
+            vertices[:, 1] -= 25
 
         if(not self.moving):
             vertices[:, 2] -= self.z_offset
+
 
         return vertices
         '''if(self.moving):
@@ -207,7 +217,7 @@ colors = []
 colors.append(initialColor)
 
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-plat.setup((200,100,255))
+plat.setup(initialColor)
 tower = Tower(NSPLATS, initialColor)
 
 clock = pygame.time.Clock()
@@ -219,15 +229,20 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            pass
 
     screen.fill((0, 0, 0))
 
     tower.draw()
 
     #plat.update()
-    plat.drawEdges()
-    pygame.display.flip()
+    plat.drawFaces()
 
+    numPlats = tower.getNumPlats()
+
+    pygame.display.flip()
+    pygame.mouse.set_visible(False)
     clock.tick(60)
 
 pygame.quit()
