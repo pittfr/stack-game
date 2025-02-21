@@ -16,33 +16,68 @@ FRAMERATE = 60
 SPHEIGHT = 3.5 #starting platform height
 PHEIGHT = 2.75 #platform height
 NSPLATS = 4 #number of starting platforms
-SBASEWIDTH = 12.5
-SBASEDEPTH = 12.5
+SBASEWIDTH = 12.5 #starting base's width
+SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
+STARTVEL = .3 #starting platform velocity
 
 ISO_MULTIPLIER = 25
 
-platVelocity = .3
+platVelocity = STARTVEL
 numPlats = NSPLATS
 
+gradients = []
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
     #s stands for "starting"; t stands for "target"
-    r, g, b = startingColor
+    sr, sg, sb = startingColor
     tr, tg, tb = targetColor
 
     def getRgb(svalue, tvalue):
         diff = tvalue - svalue
-        offset = diff / (numSteps + 1)
+        offset = diff / (numSteps)
         value = svalue + (offset * (index + 1))
         value = max(0, min(255, int(value)))
         return value
-
-        '''offset = value / (numSteps + 1)
-        value = max(0, int((offset * (index + 1)))) #make it so the value cant be less than 0
-        return min(255, value) #value cant be more than 255'''
     
-    return (getRgb(r, tr), getRgb(g, tg), getRgb(b, tb))
+    return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
+
+def getGradientColorByGradients(gradients):
+    global numPlats
+
+    if not gradients:
+        startingColor = (random.randint(MINCVALUE, MAXCVALUE), 
+                         random.randint(MINCVALUE, MAXCVALUE), 
+                         random.randint(MINCVALUE, MAXCVALUE))
+        #gradients.append(newGradient(startingColor))
+
+    currentGradient = gradients[-1]
+    startIndex, endIndex = currentGradient[0]
+    startColor, targetColor = currentGradient[1]
+    numSteps = currentGradient[2]
+
+    if numPlats > endIndex:
+        newStartColor = targetColor
+        newGradientObj = newGradient(newStartColor)
+        gradients.append(newGradientObj)
+        return newGradientObj[1][0]
+
+    index = numPlats - startIndex
+    return getGradientColor(startColor, targetColor, numSteps, index)
+
+def newGradient(startingColor):
+    global numPlats
+    numSteps = random.randint(7, 15)
+    fromIndex = numPlats
+    toIndex = numPlats + numSteps
+    targetColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+
+    color = ((fromIndex, toIndex), (startingColor, targetColor), numSteps)
+
+    global gradients
+    gradients.append(color)
+
+    return color
 
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
@@ -84,6 +119,9 @@ class Platform:
             return 0
         elif(self.moving and currentPlat % 2 == 0):
             return 1
+        
+        if not self.moving:
+            return -1
 
     def defineColors(self, rgb):
         return [self.lightenColor(rgb, 1.4), self.lightenColor(rgb, .6), rgb]
@@ -195,7 +233,7 @@ class Platform:
 
             if ((y1 > 25) or (y1 < -25)):
                 self.velocity *= -1
-                
+
         elif(self.direction == 0):
             self.vertices[:, 0] += self.velocity
 
@@ -203,7 +241,6 @@ class Platform:
 
             if ((x1 > 25) or (x1 < -25)):
                 self.velocity *= -1
-
 
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
@@ -284,14 +321,25 @@ class Tower:
 
 initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
 
-colors = []
-colors.append(initialColor)
+gradient = newGradient(initialColor)
 
 plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-plat.setup(initialColor)
+plat.setup(getGradientColorByGradients(gradients))
 tower = Tower(NSPLATS, initialColor)
 
+def drawGame():
+    screen.fill((0, 0, 0))
+
+    tower.update()
+    tower.draw()
+
+    plat.update()
+    plat.drawFaces()
+
+previous_mouse_state = (0, 0, 0)
+
 clock = pygame.time.Clock()
+
 running = True
 
 while running:
@@ -306,17 +354,14 @@ while running:
         tower.add(plat)
         numPlats = tower.getNumPlats()
         plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-        plat.setup((random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE)))
+        plat.setup(getGradientColorByGradients(gradients))
 
     previous_mouse_state = current_mouse_state
 
-    screen.fill((0, 0, 0))
+    '''if(numPlats == NSPLATS):
+        newColor()'''
 
-    tower.update()
-    tower.draw()
-
-    plat.update()
-    plat.drawFaces()
+    drawGame()
 
     pygame.display.flip()
     pygame.mouse.set_visible(False)
