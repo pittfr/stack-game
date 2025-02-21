@@ -12,16 +12,19 @@ screen = pygame.display.set_mode(windowRes)
 
 pygame.display.set_caption("Stack!")
 
+FRAMERATE = 60
 SPHEIGHT = 3.5 #starting platform height
 PHEIGHT = 2.75 #platform height
 NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5
 SBASEDEPTH = 12.5
-MINCVALUE, MAXCVALUE = 100, 220 #MINIMUM AND MAXIMUM COLOR VALUES
+MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
 
 ISO_MULTIPLIER = 25
 
+platVelocity = .3
 numPlats = NSPLATS
+
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
     #s stands for "starting"; t stands for "target"
@@ -45,6 +48,9 @@ class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
     def __init__(self, width, depth, height, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
+        self.direction = None #this will be either 0 or 1; 0 (moving right to left) and 1 (moving left to right)
+        global platVelocity
+        self.velocity = platVelocity
 
         self.width = width
         self.depth = depth
@@ -59,6 +65,8 @@ class Platform:
         self.faces = None
         
     def setup(self, rgb):
+        if(self.moving):
+            self.direction = self.getDirection()
         self.colors = self.defineColors(rgb)
         self.vertices = self.defineVertices()
         self.edges = self.defineVisibleEdges()
@@ -66,6 +74,16 @@ class Platform:
     
     def lightenColor(self, rgb, factor=1.2):
         return tuple(max(0, min(255, int(c * factor))) for c in rgb)
+
+    def getDirection(self):
+        global numPlats
+
+        currentPlat = numPlats - NSPLATS
+
+        if(self.moving and currentPlat % 2 == 1):
+            return 0
+        elif(self.moving and currentPlat % 2 == 0):
+            return 1
 
     def defineColors(self, rgb):
         return [self.lightenColor(rgb, 1.4), self.lightenColor(rgb, .6), rgb]
@@ -80,13 +98,11 @@ class Platform:
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(float)
-        
-        global numPlats
-        
-        '''if(self.moving and numPlats % 2 == 1):
+
+        if(self.direction == 0):
             vertices[:, 0] -= 25
-        elif(self.moving and numPlats % 2 == 0):
-            vertices[:, 1] -= 25'''
+        elif(self.direction == 1):
+            vertices[:, 1] -= 25
 
         if(not self.moving):
             vertices[:, 2] -= self.z_offset
@@ -172,16 +188,35 @@ class Platform:
             pygame.draw.line(screen, (255, 255, 255), (iso_x1, iso_y1), (iso_x2, iso_y2), 2)
 
     def update(self):
-        for i in range(len(self.vertices)):
-            self.vertices[i][1] += .1
+        if(self.direction == 1):
+            self.vertices[:, 1] += self.velocity
+
+            x1, y1, z1 = self.vertices[1]
+
+            if ((y1 > 25) or (y1 < -25)):
+                self.velocity *= -1
+                
+        elif(self.direction == 0):
+            self.vertices[:, 0] += self.velocity
+
+            x1, y1, z1 = self.vertices[1]
+
+            if ((x1 > 25) or (x1 < -25)):
+                self.velocity *= -1
+
 
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
         self.numStartingPlats = num
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
-        
-    def setupStartingPlatforms(self):
+        self.t = -1 #time factor (-1 (when the animation is not supposed to play) or 0 to 1) used to make smooth animations when a platform is added to the tower
+        self.animationTime = .1
+
+        self.initial_z_positions = []
+        self.final_z_positions = []
+
+    def setupStartingPlatforms(self): #setup the tower
         platforms = []
         
         for i in range(self.numStartingPlats):
@@ -192,22 +227,50 @@ class Tower:
         
         return platforms
 
-    def add(self, plat):
+    def ease_in_out(self, t): #returns eased time
+        return 1 - (1 - t)**3
+
+    def add(self, plat): #called when the user presses the mouse button
         plat.moving = False
         self.platforms.append(plat)
 
         for platform in self.platforms:
             platform.vertices[:, 2] -= plat.height
-            
+        '''if(self.t == -1):
+            self.t = 0
 
-    def getNumPlats(self):
+            self.initial_z_positions = [platform.vertices[:, 2].copy() for platform in self.platforms]
+            
+            self.final_z_positions = [
+                (platform.vertices[:, 2] - platform.height).copy() for platform in self.platforms
+            ]
+
+        #self.t = -1'''
+    
+    def getNumPlats(self): #returns the amount of platforms that are in the tower (including the starting ones)
         return len(self.platforms)
 
-    def getTowers(self):
+    def getTowers(self): #returns the array of objects
         return self.platforms
 
     def update(self):
-        pass
+        #animation
+        '''if(self.t != -1):
+            global FRAMERATE
+            self.t += 1 / (20) #calculate the interpolation factor (1 / the amount of frames the animation takes)
+
+            if(self.t > 1): #if the animation is over make it -1 again
+                for i, platform in enumerate(self.platforms):
+                    platform.vertices[:, 2] = self.final_z_positions[i]
+                self.t = -1
+
+
+            eased_t = self.ease_in_out(self.t)
+
+            for i, platform in enumerate(self.platforms):
+                platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t'''
+
+        #tower go down
         '''for plat in (self.platforms):
             for i in range(len(plat.vertices)):  
                 plat.vertices[i][2] -= 0.1
@@ -231,8 +294,6 @@ tower = Tower(NSPLATS, initialColor)
 clock = pygame.time.Clock()
 running = True
 
-tower.update()
-
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -243,23 +304,22 @@ while running:
     if current_mouse_state[0] and not previous_mouse_state[0]:
         #mouse clicked
         tower.add(plat)
+        numPlats = tower.getNumPlats()
         plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
         plat.setup((random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE)))
-        pass
 
     previous_mouse_state = current_mouse_state
 
     screen.fill((0, 0, 0))
 
+    tower.update()
     tower.draw()
 
-    #plat.update()
+    plat.update()
     plat.drawFaces()
-
-    numPlats = tower.getNumPlats()
 
     pygame.display.flip()
     pygame.mouse.set_visible(False)
-    clock.tick(60)
+    clock.tick(FRAMERATE)
 
 pygame.quit()
