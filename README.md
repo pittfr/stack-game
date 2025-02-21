@@ -8,6 +8,7 @@ Ensure you have **Python 3** installed on your system. Then, install the require
 
 ```sh
 pip install pygame
+pip install numpy
 ```
 
 ## How to Play
