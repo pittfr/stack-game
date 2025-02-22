@@ -7,8 +7,7 @@ A recreation of the classic **Stack** game using **Pygame**. The objective is to
 Ensure you have **Python 3** installed on your system. Then, install the required dependencies:
 
 ```sh
-pip install pygame
-pip install numpy
+pip install pygame numpy pywin32
 ```
 
 ## How to Play

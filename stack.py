@@ -1,8 +1,19 @@
 import pygame
 import numpy as np
 import random
+import win32print
+import win32gui
+
+def getCurrentMonitorFramerate():
+    dc = win32gui.GetDC(0) #get device context
+    framerate = win32print.GetDeviceCaps(dc, 116)  # get refresh rate of the monitor
+    win32gui.ReleaseDC(0, dc) #release device context
+    return framerate
 
 pygame.init()
+
+FRAMERATE = getCurrentMonitorFramerate()
+print(FRAMERATE)
 
 windowWidth = 750
 windowHeight = 1000
@@ -12,15 +23,15 @@ screen = pygame.display.set_mode(windowRes)
 
 pygame.display.set_caption("Stack!")
 
-FRAMERATE = 60
 SPHEIGHT = 3.5 #starting platform height
 PHEIGHT = 2.75 #platform height
 NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
-STARTVEL = .3 #starting platform velocity
-COLORTHRESHOLD = 150 #color threshold
+STARTVEL = 20 #starting platform velocity
+VELMULTIPLIER = 1.0075 #velocity increment
+COLORTHRESHOLD = 110 #color threshold
 
 ISO_MULTIPLIER = 25
 
@@ -234,9 +245,9 @@ class Platform:
 
             pygame.draw.line(screen, (255, 255, 255), (iso_x1, iso_y1), (iso_x2, iso_y2), 2)
 
-    def update(self):
+    def update(self, delta_time):
         if(self.direction == 1):
-            self.vertices[:, 1] += self.velocity
+            self.vertices[:, 1] += self.velocity * delta_time
 
             x1, y1, z1 = self.vertices[1]
 
@@ -244,7 +255,7 @@ class Platform:
                 self.velocity *= -1
 
         elif(self.direction == 0):
-            self.vertices[:, 0] += self.velocity
+            self.vertices[:, 0] += self.velocity * delta_time
 
             x1, y1, z1 = self.vertices[1]
 
@@ -300,6 +311,7 @@ class Tower:
         return self.platforms
 
     def update(self):
+        pass
         #animation
         '''if(self.t != -1):
             global FRAMERATE
@@ -336,13 +348,13 @@ plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup(getGradientColorByGradients(gradients))
 tower = Tower(NSPLATS, initialColor)
 
-def drawGame():
+def drawGame(delta_time):
     screen.fill((0, 0, 0))
 
     tower.update()
     tower.draw()
 
-    plat.update()
+    plat.update(delta_time)
     plat.drawFaces()
 
 previous_mouse_state = (0, 0, 0)
@@ -369,19 +381,23 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats
+    global plat, numPlats, platVelocity
     tower.add(plat)
+
     numPlats = tower.getNumPlats()
+    platVelocity *= VELMULTIPLIER
+
     plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
     plat.setup(getGradientColorByGradients(gradients))
+
+    print(numPlats)
 
 while running:
     handleEvents()
 
-    '''if(numPlats == NSPLATS):
-        newColor()'''
+    delta_time = clock.get_time() / 1000.0
 
-    drawGame()
+    drawGame(delta_time)
 
     pygame.display.flip()
     pygame.mouse.set_visible(False)
