@@ -351,21 +351,32 @@ clock = pygame.time.Clock()
 
 running = True
 
-while running:
+def handleEvents():
+    global running, previous_mouse_state
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                handlePlatformPlacement()
 
     current_mouse_state = pygame.mouse.get_pressed()
 
     if current_mouse_state[0] and not previous_mouse_state[0]:
-        #mouse clicked
-        tower.add(plat)
-        numPlats = tower.getNumPlats()
-        plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-        plat.setup(getGradientColorByGradients(gradients))
+        handlePlatformPlacement()
 
     previous_mouse_state = current_mouse_state
+
+def handlePlatformPlacement():
+    global plat, numPlats
+    tower.add(plat)
+    numPlats = tower.getNumPlats()
+    plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
+    plat.setup(getGradientColorByGradients(gradients))
+
+while running:
+    handleEvents()
 
     '''if(numPlats == NSPLATS):
         newColor()'''
