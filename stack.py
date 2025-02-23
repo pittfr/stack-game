@@ -24,19 +24,22 @@ screen = pygame.display.set_mode(windowRes)
 pygame.display.set_caption("Stack!")
 
 SPHEIGHT = 3.5 #starting platform height
-PHEIGHT = 2.75 #platform height
+PHEIGHT = 2.5 #platform height
 NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
 STARTVEL = 20 #starting platform velocity
-VELMULTIPLIER = 1.0075 #velocity increment
-COLORTHRESHOLD = 110 #color threshold
+VELMULTIPLIER = 1.01 #velocity increment
+COLORTHRESHOLD = 80 #color threshold
+PLATCENTEROFFSET = 25 #platform center offset
 
 ISO_MULTIPLIER = 25
 
 platVelocity = STARTVEL
 numPlats = NSPLATS
+nextPlatWidth = SBASEWIDTH
+nextPlatDepth = SBASEDEPTH
 
 gradients = []
 
@@ -119,11 +122,13 @@ class Platform:
         self.edges = None
         self.faces = None
         
-    def setup(self, rgb):
+    def setup(self, rgb, lastPlat = None):
         if(self.moving):
             self.direction = self.getDirection()
+            self.vertices = self.defineVertices(lastPlat)
+        else:
+            self.vertices = self.defineVertices()
         self.colors = self.defineColors(rgb)
-        self.vertices = self.defineVertices()
         self.edges = self.defineVisibleEdges()
         self.faces = self.defineFaces()
     
@@ -146,25 +151,27 @@ class Platform:
     def defineColors(self, rgb):
         return [self.lightenColor(rgb, 1.4), self.lightenColor(rgb, .6), rgb]
 
-    def defineVertices(self):
+    def defineVertices(self, lastPlat = None):
         #defining the base grid
-        x = np.array([0, self.width])
-        y = np.array([0, self.depth])
-        z = np.array([0, self.height])
+        x = np.array([0, self.width], dtype=float)
+        y = np.array([0, self.depth], dtype=float)
+        z = np.array([0, self.height], dtype=float)
 
         #generating the actual grid
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(float)
 
+        if(self.moving and lastPlat != None):
+            self.align(lastPlat)
+
         if(self.direction == 0):
-            vertices[:, 0] -= 25
+            vertices[:, 0] -= PLATCENTEROFFSET
         elif(self.direction == 1):
-            vertices[:, 1] -= 25
+            vertices[:, 1] -= PLATCENTEROFFSET
 
         if(not self.moving):
             vertices[:, 2] -= self.z_offset
-
 
         return vertices
         '''if(self.moving):
@@ -251,7 +258,7 @@ class Platform:
 
             x1, y1, z1 = self.vertices[1]
 
-            if ((y1 > 25) or (y1 < -25)):
+            if ((y1 > PLATCENTEROFFSET) or (y1 < -PLATCENTEROFFSET)):
                 self.velocity *= -1
 
         elif(self.direction == 0):
@@ -259,8 +266,19 @@ class Platform:
 
             x1, y1, z1 = self.vertices[1]
 
-            if ((x1 > 25) or (x1 < -25)):
+            if ((x1 > PLATCENTEROFFSET) or (x1 < -PLATCENTEROFFSET)):
                 self.velocity *= -1
+
+    def align(self, lastPlat):
+        xOffset = lastPlat.vertices[0][0] - self.vertices[0][0]
+        yOffset = lastPlat.vertices[0][1] - self.vertices[0][1]
+        self.vertices[:, 0] += xOffset
+        self.vertices[:, 1] += yOffset
+
+        if self.direction == 0:
+            self.vertices[:, 0] -= PLATCENTEROFFSET
+        elif self.direction == 1:
+            self.vertices[:, 1] -= PLATCENTEROFFSET
 
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
@@ -335,6 +353,32 @@ class Tower:
             plat.defineVisibleEdges()
             plat.defineFaces()'''
 
+    def getTrimming(self, currentPlat, lastPlat):
+        # get the bounding box of the last platform
+        last_min_x = min(lastPlat.vertices[:, 0])
+        last_max_x = max(lastPlat.vertices[:, 0])
+        last_min_y = min(lastPlat.vertices[:, 1])
+        last_max_y = max(lastPlat.vertices[:, 1])
+
+        # get the bounding box of the current platform
+        curr_min_x = min(currentPlat.vertices[:, 0])
+        curr_max_x = max(currentPlat.vertices[:, 0])
+        curr_min_y = min(currentPlat.vertices[:, 1])
+        curr_max_y = max(currentPlat.vertices[:, 1])
+
+        # calculating the overlap between the two platforms
+        overlap_x = max(0, min(last_max_x, curr_max_x) - max(last_min_x, curr_min_x))
+        overlap_y = max(0, min(last_max_y, curr_max_y) - max(last_min_y, curr_min_y))
+
+        # trimming the current platform
+        new_width = overlap_x
+        new_depth = overlap_y
+
+        return new_width, new_depth
+
+    def getLastPlat(self):
+        return self.platforms[-1]
+
     def draw(self):
         self.update()
         for plat in (self.platforms):
@@ -381,14 +425,30 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity
+    global plat, numPlats, platVelocity, gradients
+
+    lastPlat = tower.getLastPlat()
+    nextPlatWidth, nextPlatDepth = tower.getTrimming(plat, tower.getLastPlat())
+
+    if nextPlatWidth != plat.width or nextPlatDepth != plat.depth:
+        plat.width = nextPlatWidth
+        plat.depth = nextPlatDepth
+
+        # align the platform with the last platform
+        plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
+        plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
+
     tower.add(plat)
 
     numPlats = tower.getNumPlats()
-    platVelocity *= VELMULTIPLIER
 
-    plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
+    platVelocity *= VELMULTIPLIER
+    
+    lastPlat = tower.getLastPlat()
+    
+    plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
     plat.setup(getGradientColorByGradients(gradients))
+    plat.align(lastPlat)
 
     print(numPlats)
 
