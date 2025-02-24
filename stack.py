@@ -30,10 +30,10 @@ SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
 STARTVEL = 20 #starting platform velocity
-VELMULTIPLIER = 1.02 #velocity multiplier
+VELINCREMENT = 0.40 #velocity increment
 COLORTHRESHOLD = 80 #color threshold
 PLATCENTEROFFSET = 25 #platform center offset
-MAXPERFECTOFFSET = 1 #maximum offset for a perfect placement
+MAXPERFECTOFFSETPERCENTAGE = 0.035 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
 
 ISO_MULTIPLIER = 25
 
@@ -359,6 +359,12 @@ class Tower:
             plat.defineFaces()'''
 
     def getTrimming(self, currentPlat, lastPlat):
+        if(currentPlat.direction == 0):
+            MAXPERFECTOFFSET = currentPlat.width * MAXPERFECTOFFSETPERCENTAGE
+        else:
+            MAXPERFECTOFFSET = currentPlat.depth * MAXPERFECTOFFSETPERCENTAGE
+
+        
         # get the bounding box of the last platform
         last_min_x = min(lastPlat.vertices[:, 0])
         last_max_x = max(lastPlat.vertices[:, 0])
@@ -453,7 +459,6 @@ def handlePlatformPlacement():
     nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
 
     if(perfectPlacement):
-        print("Perfect Placement!")
         plat.width = lastPlat.width
         plat.depth = lastPlat.depth
         plat.align(lastPlat, perfectPlacement)
@@ -471,14 +476,15 @@ def handlePlatformPlacement():
     numPlats = tower.getNumPlats()
     score = numPlats - NSPLATS
 
-    platVelocity *= VELMULTIPLIER
+    platVelocity += VELINCREMENT
     
     lastPlat = tower.getLastPlat()
     
     plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
     plat.setup(getGradientColorByGradients(gradients))
     plat.align(lastPlat)
-
+    if(perfectPlacement):
+        print("Perfect placement!")
     print(score)
 
 while running:
