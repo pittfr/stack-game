@@ -30,14 +30,18 @@ SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
 STARTVEL = 20 #starting platform velocity
-VELMULTIPLIER = 1.01 #velocity increment
+VELMULTIPLIER = 1.02 #velocity multiplier
 COLORTHRESHOLD = 80 #color threshold
 PLATCENTEROFFSET = 25 #platform center offset
+MAXPERFECTOFFSET = 1 #maximum offset for a perfect placement
 
 ISO_MULTIPLIER = 25
 
 platVelocity = STARTVEL
 numPlats = NSPLATS
+
+score = numPlats - NSPLATS
+
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
 
@@ -269,16 +273,17 @@ class Platform:
             if ((x1 > PLATCENTEROFFSET) or (x1 < -PLATCENTEROFFSET)):
                 self.velocity *= -1
 
-    def align(self, lastPlat):
+    def align(self, lastPlat, perfectPlacement = False):
         xOffset = lastPlat.vertices[0][0] - self.vertices[0][0]
         yOffset = lastPlat.vertices[0][1] - self.vertices[0][1]
         self.vertices[:, 0] += xOffset
         self.vertices[:, 1] += yOffset
 
-        if self.direction == 0:
-            self.vertices[:, 0] -= PLATCENTEROFFSET
-        elif self.direction == 1:
-            self.vertices[:, 1] -= PLATCENTEROFFSET
+        if(not perfectPlacement):
+            if self.direction == 0:
+                self.vertices[:, 0] -= PLATCENTEROFFSET
+            elif self.direction == 1:
+                self.vertices[:, 1] -= PLATCENTEROFFSET
 
 class Tower:
     def __init__(self, num, initialColor): #number of platforms, color of the first platform
@@ -369,12 +374,29 @@ class Tower:
         # calculating the overlap between the two platforms
         overlap_x = max(0, min(last_max_x, curr_max_x) - max(last_min_x, curr_min_x))
         overlap_y = max(0, min(last_max_y, curr_max_y) - max(last_min_y, curr_min_y))
+        
+        perfect = False
 
         # trimming the current platform
-        new_width = overlap_x
-        new_depth = overlap_y
+        if(currentPlat.direction == 0): 
+            new_width = overlap_x
+            new_depth = currentPlat.depth
+            perfect = (currentPlat.width - overlap_x) <= MAXPERFECTOFFSET
+        elif(currentPlat.direction == 1):
+            new_width = currentPlat.width
+            new_depth = overlap_y
+            perfect = (currentPlat.depth - overlap_y) <= MAXPERFECTOFFSET
 
-        return new_width, new_depth
+        # check if its a perfect placement
+        if(perfect):
+            new_width = currentPlat.width
+            new_depth = currentPlat.depth
+        else:
+            new_width = overlap_x
+            new_depth = overlap_y
+
+        
+        return new_width, new_depth, perfect
 
     def getLastPlat(self):
         return self.platforms[-1]
@@ -425,22 +447,29 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, gradients
+    global plat, numPlats, platVelocity, gradients, score
 
     lastPlat = tower.getLastPlat()
-    nextPlatWidth, nextPlatDepth = tower.getTrimming(plat, tower.getLastPlat())
+    nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
 
-    if nextPlatWidth != plat.width or nextPlatDepth != plat.depth:
-        plat.width = nextPlatWidth
-        plat.depth = nextPlatDepth
+    if(perfectPlacement):
+        print("Perfect Placement!")
+        plat.width = lastPlat.width
+        plat.depth = lastPlat.depth
+        plat.align(lastPlat, perfectPlacement)
+    else:
+        if (nextPlatWidth != plat.width or nextPlatDepth != plat.depth):
+            plat.width = nextPlatWidth
+            plat.depth = nextPlatDepth
 
-        # align the platform with the last platform
-        plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
-        plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
+            # align the platform with the last platform
+            plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
+            plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
 
     tower.add(plat)
 
     numPlats = tower.getNumPlats()
+    score = numPlats - NSPLATS
 
     platVelocity *= VELMULTIPLIER
     
@@ -450,7 +479,7 @@ def handlePlatformPlacement():
     plat.setup(getGradientColorByGradients(gradients))
     plat.align(lastPlat)
 
-    print(numPlats)
+    print(score)
 
 while running:
     handleEvents()
