@@ -29,8 +29,8 @@ NSPLATS = 4 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
-STARTVEL = 20 #starting platform velocity
-VELINCREMENT = 0.40 #velocity increment
+STARTVEL = 15 #starting platform velocity
+VELINCREMENT = 0.20 #velocity increment
 COLORTHRESHOLD = 80 #color threshold
 PLATCENTEROFFSET = 25 #platform center offset
 MAXPERFECTOFFSETPERCENTAGE = 0.035 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
@@ -41,6 +41,7 @@ platVelocity = STARTVEL
 numPlats = NSPLATS
 
 score = numPlats - NSPLATS
+gameover = False
 
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
@@ -316,16 +317,6 @@ class Tower:
 
         for platform in self.platforms:
             platform.vertices[:, 2] -= plat.height
-        '''if(self.t == -1):
-            self.t = 0
-
-            self.initial_z_positions = [platform.vertices[:, 2].copy() for platform in self.platforms]
-            
-            self.final_z_positions = [
-                (platform.vertices[:, 2] - platform.height).copy() for platform in self.platforms
-            ]
-
-        #self.t = -1'''
     
     def getNumPlats(self): #returns the amount of platforms that are in the tower (including the starting ones)
         return len(self.platforms)
@@ -420,15 +411,6 @@ plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
 plat.setup(getGradientColorByGradients(gradients))
 tower = Tower(NSPLATS, initialColor)
 
-def drawGame(delta_time):
-    screen.fill((0, 0, 0))
-
-    tower.update()
-    tower.draw()
-
-    plat.update(delta_time)
-    plat.drawFaces()
-
 previous_mouse_state = (0, 0, 0)
 
 clock = pygame.time.Clock()
@@ -443,17 +425,19 @@ def handleEvents():
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                handlePlatformPlacement()
+                if(not gameover):
+                    handlePlatformPlacement()
 
     current_mouse_state = pygame.mouse.get_pressed()
 
     if current_mouse_state[0] and not previous_mouse_state[0]:
-        handlePlatformPlacement()
+        if(not gameover):
+            handlePlatformPlacement()
 
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, gradients, score
+    global plat, numPlats, platVelocity, gradients, score, gameover
 
     lastPlat = tower.getLastPlat()
     nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
@@ -471,21 +455,36 @@ def handlePlatformPlacement():
             plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
             plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
 
-    tower.add(plat)
-
-    numPlats = tower.getNumPlats()
-    score = numPlats - NSPLATS
-
     platVelocity += VELINCREMENT
     
-    lastPlat = tower.getLastPlat()
+    if(nextPlatWidth == 0 or nextPlatDepth == 0):
+        gameover = True
+    else:
+        score = numPlats - NSPLATS + 1
+        tower.add(plat)
+
+        numPlats = tower.getNumPlats()
+
+        lastPlat = tower.getLastPlat()
+        plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
+        plat.setup(getGradientColorByGradients(gradients))
+        plat.align(lastPlat)
+
+        if(perfectPlacement):
+            print("Perfect placement!")
+        print(score)
+
     
-    plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
-    plat.setup(getGradientColorByGradients(gradients))
-    plat.align(lastPlat)
-    if(perfectPlacement):
-        print("Perfect placement!")
-    print(score)
+
+def drawGame(delta_time):
+    screen.fill((0, 0, 0))
+
+    tower.update()
+    tower.draw()
+    
+    if(not gameover):
+        plat.update(delta_time)
+        plat.drawFaces()
 
 while running:
     handleEvents()

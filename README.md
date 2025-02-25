@@ -4,7 +4,7 @@ A recreation of the classic **Stack** game using **Pygame**. The objective is to
 
 ## Installation
 
-Ensure you have **Python 3** installed on your system. Then, install the required dependencies:
+Make sure you have **Python 3** installed on your system. Then, install the required dependencies:
 
 ```sh
 pip install pygame numpy pywin32
@@ -24,7 +24,7 @@ pip install pygame numpy pywin32
 ## Controls
 
 - **Spacebar** / **Mouse Click** - Places the moving block
-- **Escape** - Quits the game
+<!--- **Escape** - Quits the game-->
 
 ## Contributing
 
@@ -36,7 +36,3 @@ Feel free to contribute to improving the game! You can:
 ## License
 
 This project is open-source under the **MIT License**.
-
----
-
-Enjoy the game and happy stacking! 🎮
