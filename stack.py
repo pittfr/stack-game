@@ -30,7 +30,7 @@ SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
 STARTVEL = 15 #starting platform velocity
-VELINCREMENT = 0.20 #velocity increment
+VELINCREMENT = 0.15 #velocity increment
 COLORTHRESHOLD = 80 #color threshold
 PLATCENTEROFFSET = 25 #platform center offset
 MAXPERFECTOFFSETPERCENTAGE = 0.035 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
@@ -403,19 +403,27 @@ class Tower:
         for plat in (self.platforms):
             plat.drawFaces()
 
-initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+def setupGame():
+    global initialColor, gradient, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, gradients
 
-gradient = newGradient(initialColor)
+    initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+    gradient = newGradient(initialColor)
 
-plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-plat.setup(getGradientColorByGradients(gradients))
-tower = Tower(NSPLATS, initialColor)
+    plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
+    plat.setup(getGradientColorByGradients(gradients))
+    tower = Tower(NSPLATS, initialColor)
 
-previous_mouse_state = (0, 0, 0)
+    previous_mouse_state = (0, 0, 0)
+    clock = pygame.time.Clock()
+    running = True
+    gameover = False
+    score = numPlats - NSPLATS
+    platVelocity = STARTVEL
+    numPlats = NSPLATS
+    gradients = []
+    gradients.append(gradient)
 
-clock = pygame.time.Clock()
-
-running = True
+setupGame()
 
 def handleEvents():
     global running, previous_mouse_state
@@ -427,6 +435,8 @@ def handleEvents():
             if event.key == pygame.K_SPACE:
                 if(not gameover):
                     handlePlatformPlacement()
+            '''elif event.key == pygame.K_r:
+                setupGame()'''
 
     current_mouse_state = pygame.mouse.get_pressed()
 
@@ -474,8 +484,6 @@ def handlePlatformPlacement():
             print("Perfect placement!")
         print(score)
 
-    
-
 def drawGame(delta_time):
     screen.fill((0, 0, 0))
 
@@ -494,7 +502,7 @@ while running:
     drawGame(delta_time)
 
     pygame.display.flip()
-    pygame.mouse.set_visible(False)
+    #pygame.mouse.set_visible(False)
     clock.tick(FRAMERATE)
 
 pygame.quit()
