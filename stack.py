@@ -3,6 +3,7 @@ import numpy as np
 import random
 import win32print
 import win32gui
+import os
 
 def getCurrentMonitorFramerate():
     dc = win32gui.GetDC(0) #get device context
@@ -28,12 +29,12 @@ PHEIGHT = 2 #platform height
 NSPLATS = 3 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
-MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
-STARTVEL = 22.5 #starting platform velocity
+MINCVALUE, MAXCVALUE = 25, 205 #MINIMUM AND MAXIMUM COLOR VALUES
+STARTVEL = 25 #starting platform velocity
 VELINCREMENT = 0.10 #velocity increment
 COLORTHRESHOLD = 90 #color distance threshold
 PLATCENTEROFFSET = 25 #platform center offset
-MAXPERFECTOFFSETPERCENTAGE = 0.04 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
+MAXPERFECTOFFSETPERCENTAGE = 0.12 #maximum offset for a perfect placement
 
 ISO_MULTIPLIER = 25 
 
@@ -68,7 +69,7 @@ def getGradientColorByGradients(gradients):
         startingColor = (random.randint(MINCVALUE, MAXCVALUE), 
                          random.randint(MINCVALUE, MAXCVALUE), 
                          random.randint(MINCVALUE, MAXCVALUE))
-        #gradients.append(newGradient(startingColor))
+        gradients.append(newGradient(startingColor))
 
     currentGradient = gradients[-1]
     startIndex, endIndex = currentGradient[0]
@@ -85,23 +86,25 @@ def getGradientColorByGradients(gradients):
     return getGradientColor(startColor, targetColor, numSteps, index)
 
 def newGradient(startingColor):
-    global numPlats
-    numSteps = random.randint(10, 20)
+    global numPlats, gradients
+    numSteps = random.randint(7, 15) #number of steps for the gradient
     fromIndex = numPlats
     toIndex = numPlats + numSteps
 
     def colorDistance(color1, color2):
         return ((color1[0] - color2[0]) ** 2 + (color1[1] - color2[1]) ** 2 + (color1[2] - color2[2]) ** 2) ** 0.5
 
-
     while True:
         targetColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
         if colorDistance(startingColor, targetColor) > COLORTHRESHOLD:
-            break
+            if gradients:
+                last_startingColor = gradients[-1][1][0]
+                if colorDistance(last_startingColor, startingColor) > COLORTHRESHOLD:
+                    break
+            else:
+                break
 
     color = ((fromIndex, toIndex), (startingColor, targetColor), numSteps)
-
-    global gradients
     gradients.append(color)
 
     return color
@@ -118,8 +121,6 @@ class Platform:
         self.depth = depth
         self.height = height
         self.z_offset = z_offset
-
-        self.leaningFactor = 0.65
 
         self.colors = None
         self.vertices = None
@@ -178,26 +179,6 @@ class Platform:
             vertices[:, 2] -= self.z_offset
 
         return vertices
-        '''if(self.moving):
-            vertices = [[x, y, z]
-                        for x in (0, self.width)
-                        for y in (0, self.depth)
-                        for z in (0, self.height)]
-            return vertices
-        else:
-            vertices = [[x, y, z + self.z_offset]
-                        for x in (0, self.width)
-                        for y in (0, self.depth)
-                        for z in (0, self.height)]
-            return vertices'''
-    
-    '''def defineEdges(self):
-        edges = [(i, j) 
-            for i, v1 in enumerate(self.vertices) 
-            for j, v2 in enumerate(self.vertices) 
-            if i < j and sum(a != b for a, b in zip(v1, v2)) == 1]
-        
-        return edges'''
     
     def defineVisibleEdges(self):
         visible_edges = [
@@ -222,7 +203,8 @@ class Platform:
         return visible_faces
 
     def convertToIsometric(self, x, y ,z):
-        iso_x = (x - y) * self.leaningFactor
+        leaningFactor = 0.65
+        iso_x = (x - y) * leaningFactor
         iso_y = (x + y) / 2 - z
         return iso_x, iso_y
     
@@ -291,7 +273,7 @@ class Tower:
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
         self.t = -1 #time variable for the animation (-1 means the animation is not running, 0 to 1 means the animation is running)
-        self.animationTime = 0.5
+        self.animationTime = 0.4 #time it takes for the animation to complete
 
         self.initial_z_positions = []
         self.final_z_positions = []
@@ -342,13 +324,23 @@ class Tower:
                     platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t
 
     def getTrimming(self, currentPlat, lastPlat): #trim the current platform to fit the last platform
-        #get the maximum offset for a perfect placement
+        def dynamicPerfectOffset(size):
+            base_offset = size * MAXPERFECTOFFSETPERCENTAGE
 
-        if(currentPlat.direction == 0): #if the platform is moving right to left
-            MAXPERFECTOFFSET = currentPlat.width * MAXPERFECTOFFSETPERCENTAGE 
-        else: #if the platform is moving left to right
-            MAXPERFECTOFFSET = currentPlat.depth * MAXPERFECTOFFSETPERCENTAGE
-        
+            # Exponential decay factor (prevents large offsets for big platforms)
+            scaling_factor = 1 - np.exp(-size / SBASEWIDTH)  
+
+            adjusted_offset = base_offset * scaling_factor
+
+            return max(0.15, adjusted_offset)  # Ensure a reasonable minimum
+
+        if currentPlat.direction == 0:
+            MAXPERFECTOFFSET = dynamicPerfectOffset(currentPlat.width)
+        else:
+            MAXPERFECTOFFSET = dynamicPerfectOffset(currentPlat.depth)
+
+        print(MAXPERFECTOFFSET)
+
         # get the bounding box of the last platform
         last_min_x = min(lastPlat.vertices[:, 0])
         last_max_x = max(lastPlat.vertices[:, 0])
@@ -385,7 +377,6 @@ class Tower:
             new_width = overlap_x
             new_depth = overlap_y
 
-        
         return new_width, new_depth, perfect
 
     def getLastPlat(self): #returns the last platform in the tower
@@ -398,7 +389,10 @@ class Tower:
 
 def setupGame():
     global initialColor, gradient, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, gradients
-
+    
+    gradients = []
+    numPlats = NSPLATS
+    
     initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
     gradient = newGradient(initialColor)
 
@@ -412,14 +406,9 @@ def setupGame():
     gameover = False
     score = numPlats - NSPLATS
     platVelocity = STARTVEL
-    numPlats = NSPLATS
-    gradients = []
-    gradients.append(gradient)
-
-setupGame()
 
 def handleEvents():
-    global running, previous_mouse_state
+    global running, previous_mouse_state, gameover
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -428,8 +417,8 @@ def handleEvents():
             if event.key == pygame.K_SPACE:
                 if(not gameover):
                     handlePlatformPlacement()
-            '''elif event.key == pygame.K_r:
-                setupGame()'''
+            elif event.key == pygame.K_r:
+                gameover = True
 
     current_mouse_state = pygame.mouse.get_pressed()
 
@@ -478,19 +467,26 @@ def handlePlatformPlacement():
         print(score)
 
 def drawGame(delta_time):
+    global gameover
     screen.fill((0, 0, 0))
 
     tower.update()
     tower.draw()
-    
+
     if(not gameover):
         plat.update(delta_time)
         plat.drawFaces()
 
+setupGame()
+
 while running:
+    delta_time = clock.tick(FRAMERATE) / 1000.0 #delta_time is the time it takes to render one frame
+
     handleEvents()
 
-    delta_time = clock.tick(FRAMERATE) / 1000.0 #delta_time is the time it takes to render one frame
+    if(gameover):
+        setupGame()
+        os.system('cls')
 
     drawGame(delta_time)
 
