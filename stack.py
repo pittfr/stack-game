@@ -23,19 +23,19 @@ screen = pygame.display.set_mode(windowRes)
 
 pygame.display.set_caption("Stack!")
 
-SPHEIGHT = 3.5 #starting platform height
-PHEIGHT = 2.5 #platform height
-NSPLATS = 4 #number of starting platforms
+SPHEIGHT = 5 #starting platform height
+PHEIGHT = 2 #platform height
+NSPLATS = 3 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 50, 205 #MINIMUM AND MAXIMUM COLOR VALUES
-STARTVEL = 15 #starting platform velocity
-VELINCREMENT = 0.15 #velocity increment
-COLORTHRESHOLD = 80 #color threshold
+STARTVEL = 22.5 #starting platform velocity
+VELINCREMENT = 0.10 #velocity increment
+COLORTHRESHOLD = 90 #color distance threshold
 PLATCENTEROFFSET = 25 #platform center offset
-MAXPERFECTOFFSETPERCENTAGE = 0.035 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
+MAXPERFECTOFFSETPERCENTAGE = 0.04 #percentage of the side for the max offset for a perfect placement (the higher the value the easier it is to get a perfect placement)
 
-ISO_MULTIPLIER = 25
+ISO_MULTIPLIER = 25 
 
 platVelocity = STARTVEL
 numPlats = NSPLATS
@@ -49,15 +49,14 @@ nextPlatDepth = SBASEDEPTH
 gradients = []
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
-    #s stands for "starting"; t stands for "target"
-    sr, sg, sb = startingColor
-    tr, tg, tb = targetColor
+    sr, sg, sb = startingColor #rgb values of the starting color
+    tr, tg, tb = targetColor #rgb values of the target color
 
     def getRgb(svalue, tvalue):
-        diff = tvalue - svalue
-        offset = diff / (numSteps)
-        value = svalue + (offset * (index + 1))
-        value = max(0, min(255, int(value)))
+        diff = tvalue - svalue #difference between the starting and target values
+        offset = diff / (numSteps) #offset for each step
+        value = svalue + (offset * (index + 1)) #calculate the value for the current step
+        value = max(0, min(255, int(value))) #make sure the value is between 0 and 255
         return value
     
     return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
@@ -291,8 +290,8 @@ class Tower:
         self.numStartingPlats = num
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
-        self.t = -1 #time factor (-1 (when the animation is not supposed to play) or 0 to 1) used to make smooth animations when a platform is added to the tower
-        self.animationTime = .1
+        self.t = -1 #time variable for the animation (-1 means the animation is not running, 0 to 1 means the animation is running)
+        self.animationTime = 0.5
 
         self.initial_z_positions = []
         self.final_z_positions = []
@@ -301,22 +300,26 @@ class Tower:
         platforms = []
         
         for i in range(self.numStartingPlats):
-            z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT
+            z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT #z offset for the starting platforms
             platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
             platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numStartingPlats, i))
             platforms.append(platform)
         
         return platforms
 
-    def ease_in_out(self, t): #returns eased time
+    def ease_in_out(self, t): #easing function for the animation (t is the time variable)
         return 1 - (1 - t)**3
 
     def add(self, plat): #called when the user presses the mouse button
-        plat.moving = False
-        self.platforms.append(plat)
+        plat.moving = False #the platform is no longer moving
+        self.platforms.append(plat) #add the platform to the tower
 
-        for platform in self.platforms:
-            platform.vertices[:, 2] -= plat.height
+        shift_amount = plat.height #the amount the platform will be shifted down
+
+        self.initial_z_positions = [platform.vertices[:, 2].copy() for platform in self.platforms] #copy the z positions of the platforms
+        self.final_z_positions = [platform.vertices[:, 2].copy() - shift_amount for platform in self.platforms] #copy the shifted z positions of the platforms
+
+        self.t = 0 # starts the animation 
     
     def getNumPlats(self): #returns the amount of platforms that are in the tower (including the starting ones)
         return len(self.platforms)
@@ -325,36 +328,26 @@ class Tower:
         return self.platforms
 
     def update(self):
-        pass
-        #animation
-        '''if(self.t != -1):
-            global FRAMERATE
-            self.t += 1 / (20) #calculate the interpolation factor (1 / the amount of frames the animation takes)
+        if self.t != -1: #if the animation is running
+            self.t += 1 / (FRAMERATE * self.animationTime) #increment the time variable
 
-            if(self.t > 1): #if the animation is over make it -1 again
-                for i, platform in enumerate(self.platforms):
+            if self.t >= 1: #if the animation is finished
+                self.t = -1 #stop the animation
+                for i, platform in enumerate(self.platforms): #set the z positions of the platforms to the final z positions (to avoid floating point errors)
                     platform.vertices[:, 2] = self.final_z_positions[i]
-                self.t = -1
+            else: #if the animation is still running
+                eased_t = self.ease_in_out(self.t) #get the eased time
 
+                for i, platform in enumerate(self.platforms): #update the z positions of the platforms
+                    platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t
 
-            eased_t = self.ease_in_out(self.t)
+    def getTrimming(self, currentPlat, lastPlat): #trim the current platform to fit the last platform
+        #get the maximum offset for a perfect placement
 
-            for i, platform in enumerate(self.platforms):
-                platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t'''
-
-        #tower go down
-        '''for plat in (self.platforms):
-            for i in range(len(plat.vertices)):  
-                plat.vertices[i][2] -= 0.1
-            plat.defineVisibleEdges()
-            plat.defineFaces()'''
-
-    def getTrimming(self, currentPlat, lastPlat):
-        if(currentPlat.direction == 0):
-            MAXPERFECTOFFSET = currentPlat.width * MAXPERFECTOFFSETPERCENTAGE
-        else:
+        if(currentPlat.direction == 0): #if the platform is moving right to left
+            MAXPERFECTOFFSET = currentPlat.width * MAXPERFECTOFFSETPERCENTAGE 
+        else: #if the platform is moving left to right
             MAXPERFECTOFFSET = currentPlat.depth * MAXPERFECTOFFSETPERCENTAGE
-
         
         # get the bounding box of the last platform
         last_min_x = min(lastPlat.vertices[:, 0])
@@ -395,7 +388,7 @@ class Tower:
         
         return new_width, new_depth, perfect
 
-    def getLastPlat(self):
+    def getLastPlat(self): #returns the last platform in the tower
         return self.platforms[-1]
 
     def draw(self):
@@ -497,12 +490,11 @@ def drawGame(delta_time):
 while running:
     handleEvents()
 
-    delta_time = clock.get_time() / 1000.0
+    delta_time = clock.tick(FRAMERATE) / 1000.0 #delta_time is the time it takes to render one frame
 
     drawGame(delta_time)
 
     pygame.display.flip()
     #pygame.mouse.set_visible(False)
-    clock.tick(FRAMERATE)
-
+    
 pygame.quit()
