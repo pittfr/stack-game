@@ -42,12 +42,33 @@ platVelocity = STARTVEL
 numPlats = NSPLATS
 
 score = numPlats - NSPLATS
+perfectStackCounter = 0
 gameover = False
 
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
 
 gradients = []
+
+#sound effects
+
+stackingSFXs = []
+
+perfectStackingSFXs = []
+
+for i in range(1, 3):
+    try:
+        stackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/normalStack/stack{i}.wav"))
+    except pygame.error as e:
+        print(f"Error loading normalStack/{i}.wav: {e}")
+
+for i in range(1, 10):
+    try:
+        perfectStackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/perfectStack/perfect{i}.wav"))
+    except pygame.error as e:
+        print(f"Error loading perfectStack/{i}.wav: {e}")
+
+#gradients
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
     sr, sg, sb = startingColor #rgb values of the starting color
@@ -108,6 +129,8 @@ def newGradient(startingColor):
     gradients.append(color)
 
     return color
+
+#classes
 
 class Platform:
     #the height of the cube is always the same, the only thing that changes is the base's dimensions
@@ -339,8 +362,6 @@ class Tower:
         else:
             MAXPERFECTOFFSET = dynamicPerfectOffset(currentPlat.depth)
 
-        print(MAXPERFECTOFFSET)
-
         # get the bounding box of the last platform
         last_min_x = min(lastPlat.vertices[:, 0])
         last_max_x = max(lastPlat.vertices[:, 0])
@@ -387,8 +408,10 @@ class Tower:
         for plat in (self.platforms):
             plat.drawFaces()
 
+#game functions
+
 def setupGame():
-    global initialColor, gradient, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, gradients
+    global initialColor, gradient, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, gradients, perfectStackCounter
     
     gradients = []
     numPlats = NSPLATS
@@ -405,6 +428,7 @@ def setupGame():
     running = True
     gameover = False
     score = numPlats - NSPLATS
+    perfectStackCounter = 0
     platVelocity = STARTVEL
 
 def handleEvents():
@@ -429,7 +453,7 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, gradients, score, gameover
+    global plat, numPlats, platVelocity, gradients, score, gameover, perfectStackCounter
 
     lastPlat = tower.getLastPlat()
     nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
@@ -463,7 +487,15 @@ def handlePlatformPlacement():
         plat.align(lastPlat)
 
         if(perfectPlacement):
-            print("Perfect placement!")
+            perfectStackCounter += 1
+            if(perfectStackCounter >= len(perfectStackingSFXs)):
+                perfectStackingSFXs[len(perfectStackingSFXs) - 1].play()
+            else:
+                perfectStackingSFXs[perfectStackCounter - 1].play()
+
+        else:
+            random.choice(stackingSFXs).play()
+            perfectStackCounter = 0
         print(score)
 
 def drawGame(delta_time):
@@ -486,7 +518,7 @@ while running:
 
     if(gameover):
         setupGame()
-        os.system('cls')
+        os.system('cls') #this line is for debug only
 
     drawGame(delta_time)
 
