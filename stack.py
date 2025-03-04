@@ -30,6 +30,7 @@ NSPLATS = 3 #number of starting platforms
 SBASEWIDTH = 12.5 #starting base's width
 SBASEDEPTH = 12.5 #starting base's height
 MINCVALUE, MAXCVALUE = 25, 205 #MINIMUM AND MAXIMUM COLOR VALUES
+MINNSTEPS, MAXNSTEPS = 5, 15 #MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
 STARTVEL = 25 #starting platform velocity
 VELINCREMENT = 0.10 #velocity increment
 COLORTHRESHOLD = 90 #color distance threshold
@@ -62,7 +63,7 @@ for i in range(1, 3):
     except pygame.error as e:
         print(f"Error loading normalStack/{i}.wav: {e}")
 
-for i in range(1, 10):
+for i in range(1, 21):
     try:
         perfectStackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/perfectStack/perfect{i}.wav"))
     except pygame.error as e:
@@ -108,7 +109,7 @@ def getGradientColorByGradients(gradients):
 
 def newGradient(startingColor):
     global numPlats, gradients
-    numSteps = random.randint(7, 15) #number of steps for the gradient
+    numSteps = random.randint(MINNSTEPS, MAXNSTEPS)
     fromIndex = numPlats
     toIndex = numPlats + numSteps
 
@@ -488,11 +489,7 @@ def handlePlatformPlacement():
 
         if(perfectPlacement):
             perfectStackCounter += 1
-            if(perfectStackCounter >= len(perfectStackingSFXs)):
-                perfectStackingSFXs[len(perfectStackingSFXs) - 1].play()
-            else:
-                perfectStackingSFXs[perfectStackCounter - 1].play()
-
+            perfectStackingSFXs[(perfectStackCounter % len(perfectStackingSFXs)) - 1].play()
         else:
             random.choice(stackingSFXs).play()
             perfectStackCounter = 0
