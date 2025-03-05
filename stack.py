@@ -5,56 +5,64 @@ import win32print
 import win32gui
 import os
 
+# constants
+WINDOW_WIDTH = 650
+WINDOW_HEIGHT = 1000
+
+SPHEIGHT = 5  # starting platform height
+PHEIGHT = 2  # platform height
+NSPLATS = 3  # number of starting platforms
+SBASEWIDTH = 12.5  # starting base's width
+SBASEDEPTH = 12.5  # starting base's height
+PLATCENTEROFFSET = 25  # platform center offset
+MAXPERFECTOFFSETPERCENTAGE = 0.12  # maximum offset for a perfect placement
+MINVALIDSIDE = 0.15  # minimum valid side length for a platform
+
+COLORTHRESHOLD = 75  # color distance threshold for the gradients
+BACKGROUNDDESATURATION = 0.4  # background desaturation factor
+MINCVALUE, MAXCVALUE = 25, 205  # MINIMUM AND MAXIMUM COLOR VALUES
+MINNSTEPS, MAXNSTEPS = 7, 15  # MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
+
+STARTVEL = 25  # starting platform velocity
+VELINCREMENT = 0.10  # velocity increment
+
+ISO_MULTIPLIER = 25
+
 def getCurrentMonitorFramerate():
-    dc = win32gui.GetDC(0) #get device context
+    """
+    gets the current monitor's refresh rate
+    """
+    dc = win32gui.GetDC(0)  # get device context
     framerate = win32print.GetDeviceCaps(dc, 116)  # get refresh rate of the monitor
-    win32gui.ReleaseDC(0, dc) #release device context
+    win32gui.ReleaseDC(0, dc)  # release device context
     return framerate
 
-pygame.init()
+# initialize Pygame
+try:
+    pygame.init()
+except pygame.error as e:
+    print(f"Failed to initialize Pygame: {e}")
+    exit(1)
 
 FRAMERATE = getCurrentMonitorFramerate()
 print(FRAMERATE)
 
-windowWidth = 750
-windowHeight = 1000
-
-windowRes = (windowWidth, windowHeight)
+windowRes = (WINDOW_WIDTH, WINDOW_HEIGHT)
 screen = pygame.display.set_mode(windowRes)
-
 pygame.display.set_caption("Stack!")
 
-SPHEIGHT = 5 #starting platform height
-PHEIGHT = 2 #platform height
-NSPLATS = 3 #number of starting platforms
-SBASEWIDTH = 12.5 #starting base's width
-SBASEDEPTH = 12.5 #starting base's height
-MINCVALUE, MAXCVALUE = 25, 205 #MINIMUM AND MAXIMUM COLOR VALUES
-MINNSTEPS, MAXNSTEPS = 5, 15 #MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
-STARTVEL = 25 #starting platform velocity
-VELINCREMENT = 0.10 #velocity increment
-COLORTHRESHOLD = 90 #color distance threshold
-PLATCENTEROFFSET = 25 #platform center offset
-MAXPERFECTOFFSETPERCENTAGE = 0.12 #maximum offset for a perfect placement
-
-ISO_MULTIPLIER = 25 
-
+# initialize game variables
 platVelocity = STARTVEL
 numPlats = NSPLATS
-
 score = numPlats - NSPLATS
 perfectStackCounter = 0
 gameover = False
-
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
-
 gradients = []
 
-#sound effects
-
+# load sound effects
 stackingSFXs = []
-
 perfectStackingSFXs = []
 
 for i in range(1, 3):
@@ -69,22 +77,38 @@ for i in range(1, 21):
     except pygame.error as e:
         print(f"Error loading perfectStack/{i}.wav: {e}")
 
-#gradients
+# colors
 
 def getGradientColor(startingColor, targetColor, numSteps, index):
-    sr, sg, sb = startingColor #rgb values of the starting color
-    tr, tg, tb = targetColor #rgb values of the target color
+    """
+    calculates the gradient color at a specific step between the starting color and the target color
+    
+    startingColor: tuple of (r, g, b) values for the starting color
+    targetColor: tuple of (t, g, b) values for the target color
+    numSteps: total number of steps in the gradient
+    index: the current step index
+
+    returns a tuple of (r, g, b) values for the gradient color at the specified step
+    """
+    sr, sg, sb = startingColor # rgb values of the starting color
+    tr, tg, tb = targetColor # rgb values of the target color
 
     def getRgb(svalue, tvalue):
-        diff = tvalue - svalue #difference between the starting and target values
-        offset = diff / (numSteps) #offset for each step
-        value = svalue + (offset * (index + 1)) #calculate the value for the current step
-        value = max(0, min(255, int(value))) #make sure the value is between 0 and 255
+        diff = tvalue - svalue # difference between the starting and target values
+        offset = diff / (numSteps) # offset for each step
+        value = svalue + (offset * (index + 1)) # calculate the value for the current step
+        value = max(0, min(255, int(value))) # make sure the value is between 0 and 255
         return value
     
     return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
 
 def getGradientColorByGradients(gradients):
+    """
+    gets the current gradient color based on the number of platforms
+    
+    gradients: list of gradient objects
+    returns a tuple of (r, g, b) values for the current gradient color
+    """
     global numPlats
 
     if not gradients:
@@ -108,6 +132,12 @@ def getGradientColorByGradients(gradients):
     return getGradientColor(startColor, targetColor, numSteps, index)
 
 def newGradient(startingColor):
+    """
+    creates a new gradient object
+    
+    startingColor: tuple of (r, g, b) values for the starting color
+    returns a gradient object
+    """
     global numPlats, gradients
     numSteps = random.randint(MINNSTEPS, MAXNSTEPS)
     fromIndex = numPlats
@@ -131,13 +161,58 @@ def newGradient(startingColor):
 
     return color
 
-#classes
+def drawGradientBackground(screen, gradients):
+    """
+    draws the gradient background on the screen
+    
+    screen: pygame screen object
+    gradients: list of gradient objects
+    """
+    if not gradients:
+        return
+
+    currentGradient = gradients[-1]
+    startColor, targetColor = currentGradient[1]
+
+    for i in range(WINDOW_HEIGHT):
+        # calculate the color for each pixel row based on the total height
+        color = desaturateColor(lightenColor(getGradientColor(startColor, targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)), BACKGROUNDDESATURATION)
+        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))
+
+def lightenColor(rgb, factor=1.2):
+    """
+    lightens the given RGB color by a specified factor
+    
+    rgb: tuple of (r, g, b) values
+    factor: lightening factor
+    returns a tuple of lightened (r, g, b) values
+    """
+    return tuple(max(0, min(255, int(c * factor))) for c in rgb)
+
+def desaturateColor(rgb, factor=0.5):
+    """
+    desaturates the given RGB color by blending it with its grayscale equivalent
+    
+    rgb: tuple of (r, g, b) values
+    factor: desaturation factor (0.0 = fully saturated, 1.0 = fully desaturated)
+    returns a tuple of desaturated (R, G, B) values
+    """
+    r, g, b = rgb
+    gray = int(0.3 * r + 0.59 * g + 0.11 * b)  # convert to grayscale using luminance formula
+    desaturated = (
+        int(r + (gray - r) * factor),
+        int(g + (gray - g) * factor),
+        int(b + (gray - b) * factor)
+    )
+    return desaturated
+
+# classes
 
 class Platform:
-    #the height of the cube is always the same, the only thing that changes is the base's dimensions
+    # the height of the cube is always the same, the only thing that changes is the base's dimensions
     def __init__(self, width, depth, height, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
-        self.direction = None #this will be either 0 or 1; 0 (moving right to left) and 1 (moving left to right)
+        self.direction = None # this will be either 0 or 1; 0 (moving right to left) and 1 (moving left to right)
         global platVelocity
         self.velocity = platVelocity
 
@@ -152,6 +227,12 @@ class Platform:
         self.faces = None
         
     def setup(self, rgb, lastPlat = None):
+        """
+        sets up the platform with the given color and aligns it with the last platform if provided
+        
+        rgb: tuple of (r, g, b) values for the platform color
+        lastPlat: the last platform object to align with
+        """
         if(self.moving):
             self.direction = self.getDirection()
             self.vertices = self.defineVertices(lastPlat)
@@ -160,11 +241,13 @@ class Platform:
         self.colors = self.defineColors(rgb)
         self.edges = self.defineVisibleEdges()
         self.faces = self.defineFaces()
-    
-    def lightenColor(self, rgb, factor=1.2):
-        return tuple(max(0, min(255, int(c * factor))) for c in rgb)
 
     def getDirection(self):
+        """
+        determines the direction of the platform's movement
+        
+        returns a direction value (0 for right to left, 1 for left to right, -1 for no movement)
+        """
         global numPlats
 
         currentPlat = numPlats - NSPLATS
@@ -178,15 +261,27 @@ class Platform:
             return -1
 
     def defineColors(self, rgb):
-        return [self.lightenColor(rgb, 1.4), self.lightenColor(rgb, .6), rgb]
+        """
+        defines the colors for the platform's faces
+        
+        rgb: tuple of (r, g, b) values for the base color
+        returns a list of colors for the platform's faces
+        """
+        return [lightenColor(rgb, 1.4), lightenColor(rgb, .6), rgb]
 
     def defineVertices(self, lastPlat = None):
-        #defining the base grid
+        """
+        defines the vertices of the platform
+        
+        lastPlat: the last platform object to align with
+        returns an array of vertices for the platform
+        """
+        # defining the base grid
         x = np.array([0, self.width], dtype=float)
         y = np.array([0, self.depth], dtype=float)
         z = np.array([0, self.height], dtype=float)
 
-        #generating the actual grid
+        # generating the actual grid
         X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
 
         vertices = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()]).astype(float)
@@ -205,6 +300,11 @@ class Platform:
         return vertices
     
     def defineVisibleEdges(self):
+        """
+        defines the visible edges of the platform
+        
+        returns a list of visible edges for the platform
+        """
         visible_edges = [
             (1,3),
             (1,5),
@@ -219,50 +319,74 @@ class Platform:
         return visible_edges
 
     def defineFaces(self):
+        """
+        defines the visible faces of the platform
+        
+        returns a list of visible faces for the platform
+        """
         visible_faces = [
-            (1,3,7,5), #top face
-            (2,3,7,6), #left face
-            (4,5,7,6)  #right face
+            (1,3,7,5), # top face
+            (2,3,7,6), # left face
+            (4,5,7,6)  # right face
         ]
         return visible_faces
 
     def convertToIsometric(self, x, y ,z):
+        """
+        converts 3D coordinates to isometric projection
+        
+        x: X coordinate
+        y: Y coordinate
+        z: Z coordinate
+        returns a tuple of isometric (x, y) coordinates
+        """
         leaningFactor = 0.65
         iso_x = (x - y) * leaningFactor
         iso_y = (x + y) / 2 - z
         return iso_x, iso_y
     
     def drawFaces(self):       
+        """
+        draws the faces of the platform
+        """
         for face, color in zip(self.faces, self.colors):
-            #make an array with each faces' vertices
+            # make an array with each faces' vertices
             vertices = [self.vertices[i] for i in face]
-            #converting them to isometric projection
+            # converting them to isometric projection
             iso_vertices = [self.convertToIsometric(x * ISO_MULTIPLIER, y * ISO_MULTIPLIER, z * ISO_MULTIPLIER) 
                             for x, y, z in vertices]
-            #adding some padding so they get centered
-            iso_vertices = [(x + windowWidth // 2, y + windowHeight // 2) for x, y in iso_vertices]
+            # adding some padding so they get centered
+            iso_vertices = [(x + WINDOW_WIDTH // 2, y + WINDOW_HEIGHT // 2) for x, y in iso_vertices]
 
             pygame.draw.polygon(screen, color, iso_vertices)
 
     def drawEdges(self):
+        """
+        draws the edges of the platform
+        """
         for edge in self.edges:
-            #get the 3D coords from 2 vertices
+            # get the 3D coords from 2 vertices
             x1, y1, z1 = self.vertices[edge[0]]
             x2, y2, z2 = self.vertices[edge[1]]
             
-            #apply isometric projection to both vertices
+            # apply isometric projection to both vertices
 
             iso_x1, iso_y1 = self.convertToIsometric(x1 * ISO_MULTIPLIER, y1 * ISO_MULTIPLIER, z1 * ISO_MULTIPLIER)
             iso_x2, iso_y2 = self.convertToIsometric(x2 * ISO_MULTIPLIER, y2 * ISO_MULTIPLIER, z2 * ISO_MULTIPLIER)
             
-            iso_x1 += windowWidth // 2
-            iso_y1 += windowHeight // 2
-            iso_x2 += windowWidth // 2
-            iso_y2 += windowHeight // 2
+            iso_x1 += WINDOW_WIDTH // 2
+            iso_y1 += WINDOW_HEIGHT // 2
+            iso_x2 += WINDOW_WIDTH // 2
+            iso_y2 += WINDOW_HEIGHT // 2
 
             pygame.draw.line(screen, (255, 255, 255), (iso_x1, iso_y1), (iso_x2, iso_y2), 2)
 
     def update(self, delta_time):
+        """
+        updates the platform's position based on its velocity and direction
+        
+        delta_time: time elapsed since the last update
+        """
         if(self.direction == 1):
             self.vertices[:, 1] += self.velocity * delta_time
 
@@ -280,6 +404,12 @@ class Platform:
                 self.velocity *= -1
 
     def align(self, lastPlat, perfectPlacement = False):
+        """
+        aligns the platform with the last platform
+        
+        lastPlat: the last platform object to align with
+        perfectPlacement: boolean indicating if the placement is perfect
+        """
         xOffset = lastPlat.vertices[0][0] - self.vertices[0][0]
         yOffset = lastPlat.vertices[0][1] - self.vertices[0][1]
         self.vertices[:, 0] += xOffset
@@ -292,71 +422,87 @@ class Platform:
                 self.vertices[:, 1] -= PLATCENTEROFFSET
 
 class Tower:
-    def __init__(self, num, initialColor): #number of platforms, color of the first platform
+    def __init__(self, num, initialColor): # number of platforms, color of the first platform
         self.numStartingPlats = num
         self.initialColor = initialColor
         self.platforms = self.setupStartingPlatforms()
-        self.t = -1 #time variable for the animation (-1 means the animation is not running, 0 to 1 means the animation is running)
-        self.animationTime = 0.4 #time it takes for the animation to complete
+        self.t = -1 # time variable for the animation (-1 means the animation is not running, 0 to 1 means the animation is running)
+        self.animationTime = 0.4 # time it takes for the animation to complete
 
         self.initial_z_positions = []
         self.final_z_positions = []
 
-    def setupStartingPlatforms(self): #setup the tower
+    def setupStartingPlatforms(self): # setup the tower
+        """
+        sets up the starting platforms for the tower
+        
+        returns a list of starting platform objects
+        """
         platforms = []
         
         for i in range(self.numStartingPlats):
-            z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT #z offset for the starting platforms
+            z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT # z offset for the starting platforms
             platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
             platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numStartingPlats, i))
             platforms.append(platform)
         
         return platforms
 
-    def ease_in_out(self, t): #easing function for the animation (t is the time variable)
+    def ease_in_out(self, t): # easing function for the animation (t is the time variable)
+        """
+        easing function for the animation
+        
+        t: time variable
+        returns eased time value
+        """
         return 1 - (1 - t)**3
 
-    def add(self, plat): #called when the user presses the mouse button
-        plat.moving = False #the platform is no longer moving
-        self.platforms.append(plat) #add the platform to the tower
+    def add(self, plat): # called when the user presses the mouse button
+        """
+        adds a new platform to the tower and starts the animation
+        
+        plat: the new platform object to add
+        """
+        plat.moving = False # the platform is no longer moving
+        self.platforms.append(plat) # add the platform to the tower
 
-        shift_amount = plat.height #the amount the platform will be shifted down
+        shift_amount = plat.height # the amount the platform will be shifted down
 
-        self.initial_z_positions = [platform.vertices[:, 2].copy() for platform in self.platforms] #copy the z positions of the platforms
-        self.final_z_positions = [platform.vertices[:, 2].copy() - shift_amount for platform in self.platforms] #copy the shifted z positions of the platforms
+        self.initial_z_positions = [platform.vertices[:, 2].copy() for platform in self.platforms] # copy the z positions of the platforms
+        self.final_z_positions = [platform.vertices[:, 2].copy() - shift_amount for platform in self.platforms] # copy the shifted z positions of the platforms
 
         self.t = 0 # starts the animation 
     
-    def getNumPlats(self): #returns the amount of platforms that are in the tower (including the starting ones)
+    def getNumPlats(self): # returns the amount of platforms that are in the tower (including the starting ones)
         return len(self.platforms)
 
-    def getTowers(self): #returns the array of objects
+    def getTowers(self): # returns the array of objects
         return self.platforms
 
     def update(self):
-        if self.t != -1: #if the animation is running
+        if self.t != -1: # if the animation is running
             self.t += 1 / (FRAMERATE * self.animationTime) #increment the time variable
 
-            if self.t >= 1: #if the animation is finished
-                self.t = -1 #stop the animation
-                for i, platform in enumerate(self.platforms): #set the z positions of the platforms to the final z positions (to avoid floating point errors)
+            if self.t >= 1: # if the animation is finished
+                self.t = -1 # stop the animation
+                for i, platform in enumerate(self.platforms): # set the z positions of the platforms to the final z positions (to avoid floating point errors)
                     platform.vertices[:, 2] = self.final_z_positions[i]
-            else: #if the animation is still running
-                eased_t = self.ease_in_out(self.t) #get the eased time
+            else: # if the animation is still running
+                eased_t = self.ease_in_out(self.t) # get the eased time
 
-                for i, platform in enumerate(self.platforms): #update the z positions of the platforms
+                for i, platform in enumerate(self.platforms): # update the z positions of the platforms
                     platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t
 
-    def getTrimming(self, currentPlat, lastPlat): #trim the current platform to fit the last platform
+    def getTrimming(self, currentPlat, lastPlat): # trim the current platform to fit the last platform
         def dynamicPerfectOffset(size):
             base_offset = size * MAXPERFECTOFFSETPERCENTAGE
 
-            # Exponential decay factor (prevents large offsets for big platforms)
+            # exponential decay factor (prevents large offsets for big platforms)
             scaling_factor = 1 - np.exp(-size / SBASEWIDTH)  
 
             adjusted_offset = base_offset * scaling_factor
 
-            return max(0.15, adjusted_offset)  # Ensure a reasonable minimum
+            return max(0.15, adjusted_offset)  # ensure a reasonable minimum
 
         if currentPlat.direction == 0:
             MAXPERFECTOFFSET = dynamicPerfectOffset(currentPlat.width)
@@ -401,7 +547,7 @@ class Tower:
 
         return new_width, new_depth, perfect
 
-    def getLastPlat(self): #returns the last platform in the tower
+    def getLastPlat(self): # returns the last platform in the tower
         return self.platforms[-1]
 
     def draw(self):
@@ -474,7 +620,7 @@ def handlePlatformPlacement():
 
     platVelocity += VELINCREMENT
     
-    if(nextPlatWidth == 0 or nextPlatDepth == 0):
+    if(nextPlatWidth <= MINVALIDSIDE or nextPlatDepth <= MINVALIDSIDE):
         gameover = True
     else:
         score = numPlats - NSPLATS + 1
@@ -494,10 +640,13 @@ def handlePlatformPlacement():
             random.choice(stackingSFXs).play()
             perfectStackCounter = 0
         print(score)
+        print(f"Next Platform Width: {nextPlatWidth}, Next Platform Depth: {nextPlatDepth}")
 
 def drawGame(delta_time):
     global gameover
     screen.fill((0, 0, 0))
+
+    drawGradientBackground(screen, gradients)
 
     tower.update()
     tower.draw()
@@ -506,20 +655,19 @@ def drawGame(delta_time):
         plat.update(delta_time)
         plat.drawFaces()
 
+# main game loop
 setupGame()
 
 while running:
-    delta_time = clock.tick(FRAMERATE) / 1000.0 #delta_time is the time it takes to render one frame
+    delta_time = clock.tick(FRAMERATE) / 1000.0  # delta_time is the time it takes to render one frame
 
     handleEvents()
 
-    if(gameover):
+    if gameover:
         setupGame()
-        os.system('cls') #this line is for debug only
+        os.system('cls')  # this line is for debug only
 
     drawGame(delta_time)
-
     pygame.display.flip()
-    #pygame.mouse.set_visible(False)
-    
+
 pygame.quit()
