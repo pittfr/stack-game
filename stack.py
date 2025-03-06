@@ -174,10 +174,13 @@ def drawGradientBackground(screen, gradients):
     currentGradient = gradients[-1]
     startColor, targetColor = currentGradient[1]
 
-    for i in range(WINDOW_HEIGHT):
-        # calculate the color for each pixel row based on the total height
+    # define the number of rows to group together
+    row_group_size = 5
+
+    for i in range(0, WINDOW_HEIGHT, row_group_size):
+        # calculate the color for each group of rows
         color = desaturateColor(lightenColor(getGradientColor(startColor, targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)), BACKGROUNDDESATURATION)
-        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))
+        pygame.draw.rect(screen, color, (0, i, WINDOW_WIDTH, row_group_size))
 
 def lightenColor(rgb, factor=1.2):
     """
@@ -640,7 +643,6 @@ def handlePlatformPlacement():
             random.choice(stackingSFXs).play()
             perfectStackCounter = 0
         print(score)
-        print(f"Next Platform Width: {nextPlatWidth}, Next Platform Depth: {nextPlatDepth}")
 
 def drawGame(delta_time):
     global gameover
