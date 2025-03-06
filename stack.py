@@ -78,110 +78,6 @@ for i in range(1, 21):
         print(f"Error loading perfectStack/{i}.wav: {e}")
 
 # colors
-
-def getGradientColor(startingColor, targetColor, numSteps, index):
-    """
-    calculates the gradient color at a specific step between the starting color and the target color
-    
-    startingColor: tuple of (r, g, b) values for the starting color
-    targetColor: tuple of (t, g, b) values for the target color
-    numSteps: total number of steps in the gradient
-    index: the current step index
-
-    returns a tuple of (r, g, b) values for the gradient color at the specified step
-    """
-    sr, sg, sb = startingColor # rgb values of the starting color
-    tr, tg, tb = targetColor # rgb values of the target color
-
-    def getRgb(svalue, tvalue):
-        diff = tvalue - svalue # difference between the starting and target values
-        offset = diff / (numSteps) # offset for each step
-        value = svalue + (offset * (index + 1)) # calculate the value for the current step
-        value = max(0, min(255, int(value))) # make sure the value is between 0 and 255
-        return value
-    
-    return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
-
-def getGradientColorByGradients(gradients):
-    """
-    gets the current gradient color based on the number of platforms
-    
-    gradients: list of gradient objects
-    returns a tuple of (r, g, b) values for the current gradient color
-    """
-    global numPlats
-
-    if not gradients:
-        startingColor = (random.randint(MINCVALUE, MAXCVALUE), 
-                         random.randint(MINCVALUE, MAXCVALUE), 
-                         random.randint(MINCVALUE, MAXCVALUE))
-        gradients.append(newGradient(startingColor))
-
-    currentGradient = gradients[-1]
-    startIndex, endIndex = currentGradient[0]
-    startColor, targetColor = currentGradient[1]
-    numSteps = currentGradient[2]
-
-    if numPlats > endIndex:
-        newStartColor = targetColor
-        newGradientObj = newGradient(newStartColor)
-        gradients.append(newGradientObj)
-        return newGradientObj[1][0]
-
-    index = numPlats - startIndex
-    return getGradientColor(startColor, targetColor, numSteps, index)
-
-def newGradient(startingColor):
-    """
-    creates a new gradient object
-    
-    startingColor: tuple of (r, g, b) values for the starting color
-    returns a gradient object
-    """
-    global numPlats, gradients
-    numSteps = random.randint(MINNSTEPS, MAXNSTEPS)
-    fromIndex = numPlats
-    toIndex = numPlats + numSteps
-
-    def colorDistance(color1, color2):
-        return ((color1[0] - color2[0]) ** 2 + (color1[1] - color2[1]) ** 2 + (color1[2] - color2[2]) ** 2) ** 0.5
-
-    while True:
-        targetColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
-        if colorDistance(startingColor, targetColor) > COLORTHRESHOLD:
-            if gradients:
-                last_startingColor = gradients[-1][1][0]
-                if colorDistance(last_startingColor, startingColor) > COLORTHRESHOLD:
-                    break
-            else:
-                break
-
-    color = ((fromIndex, toIndex), (startingColor, targetColor), numSteps)
-    gradients.append(color)
-
-    return color
-
-def drawGradientBackground(screen, gradients):
-    """
-    draws the gradient background on the screen
-    
-    screen: pygame screen object
-    gradients: list of gradient objects
-    """
-    if not gradients:
-        return
-
-    currentGradient = gradients[-1]
-    startColor, targetColor = currentGradient[1]
-
-    # define the number of rows to group together
-    row_group_size = 5
-
-    for i in range(0, WINDOW_HEIGHT, row_group_size):
-        # calculate the color for each group of rows
-        color = desaturateColor(lightenColor(getGradientColor(startColor, targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)), BACKGROUNDDESATURATION)
-        pygame.draw.rect(screen, color, (0, i, WINDOW_WIDTH, row_group_size))
-
 def lightenColor(rgb, factor=1.2):
     """
     lightens the given RGB color by a specified factor
@@ -209,10 +105,96 @@ def desaturateColor(rgb, factor=0.5):
     )
     return desaturated
 
+def newGradient(startingColor):
+    """
+    creates a new gradient with the given starting color and adds it to the list of gradients
+    """
+    global gradients, gradient
+    gradient = Gradient(startingColor)
+    gradients.append(gradient)
+    return gradient
+
+def drawBackground(screen, gradients):
+    """
+    draws the gradient background on the screen.
+    """
+    if not gradients:
+        return
+
+    currentGradient = gradients[-1]
+    startColor = currentGradient.startingColor
+    targetColor = currentGradient.targetColor
+
+    for i in range(WINDOW_HEIGHT):
+        color = desaturateColor(
+                lightenColor(
+                    Gradient.getGradientColorFrom(startColor, targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
+                ), 
+                BACKGROUNDDESATURATION
+            )
+        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))
+
 # classes
 
+class Gradient:
+    def __init__(self, startingColor):
+        self.startingColor = startingColor
+        self.targetColor = self.generateTargetColor()
+        self.numSteps = random.randint(MINNSTEPS, MAXNSTEPS)
+        self.fromIndex = numPlats
+        self.toIndex = numPlats + self.numSteps
+
+    def generateTargetColor(self):
+        while True:
+            targetColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
+            if self.colorDistance(self.startingColor, targetColor) > COLORTHRESHOLD:
+                if gradients:
+                    last_startingColor = gradients[-1].startingColor
+                    if self.colorDistance(last_startingColor, self.startingColor) > COLORTHRESHOLD:
+                        return targetColor
+                else:
+                    return targetColor
+
+    @staticmethod
+    def colorDistance(color1, color2):
+        return ((color1[0] - color2[0]) ** 2 + (color1[1] - color2[1]) ** 2 + (color1[2] - color2[2]) ** 2) ** 0.5
+
+    def getGradientColor(self, index):
+        sr, sg, sb = self.startingColor
+        tr, tg, tb = self.targetColor
+
+        def getRgb(svalue, tvalue):
+            diff = tvalue - svalue
+            offset = diff / self.numSteps
+            value = svalue + (offset * (index + 1))
+            return max(0, min(255, int(value)))
+
+        return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
+    
+    @staticmethod
+    def getGradientColorFrom(startingColor, targetColor, numSteps, index):
+        sr, sg, sb = startingColor
+        tr, tg, tb = targetColor
+
+        def getRgb(svalue, tvalue):
+            diff = tvalue - svalue
+            offset = diff / numSteps
+            value = svalue + (offset * (index + 1))
+            return max(0, min(255, int(value)))
+
+        return (getRgb(sr, tr), getRgb(sg, tg), getRgb(sb, tb))
+
+    def getCurrentColor(self):
+        global numPlats
+        if numPlats > self.toIndex:
+            newStartColor = self.targetColor
+            newGradientObj = newGradient(newStartColor)
+            return newGradientObj.startingColor
+
+        index = numPlats - self.fromIndex
+        return self.getGradientColor(index)
+
 class Platform:
-    # the height of the cube is always the same, the only thing that changes is the base's dimensions
     def __init__(self, width, depth, height, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
         self.direction = None # this will be either 0 or 1; 0 (moving right to left) and 1 (moving left to right)
@@ -446,7 +428,7 @@ class Tower:
         for i in range(self.numStartingPlats):
             z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT # z offset for the starting platforms
             platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, False, z_offset)
-            platform.setup(getGradientColor((0, 0, 0), self.initialColor, self.numStartingPlats, i))
+            platform.setup(Gradient.getGradientColorFrom((0, 0, 0), self.initialColor, self.numStartingPlats, i))
             platforms.append(platform)
         
         return platforms
@@ -567,10 +549,10 @@ def setupGame():
     numPlats = NSPLATS
     
     initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
-    gradient = newGradient(initialColor)
+    newGradient(initialColor)
 
     plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-    plat.setup(getGradientColorByGradients(gradients))
+    plat.setup(gradient.getCurrentColor())
     tower = Tower(NSPLATS, initialColor)
 
     previous_mouse_state = (0, 0, 0)
@@ -617,7 +599,7 @@ def handlePlatformPlacement():
             plat.width = nextPlatWidth
             plat.depth = nextPlatDepth
 
-            # align the platform with the last platform
+# align the platform with the last platform
             plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
             plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
 
@@ -633,7 +615,7 @@ def handlePlatformPlacement():
 
         lastPlat = tower.getLastPlat()
         plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
-        plat.setup(getGradientColorByGradients(gradients))
+        plat.setup(gradients[-1].getCurrentColor())
         plat.align(lastPlat)
 
         if(perfectPlacement):
@@ -648,7 +630,7 @@ def drawGame(delta_time):
     global gameover
     screen.fill((0, 0, 0))
 
-    drawGradientBackground(screen, gradients)
+    drawBackground(screen, gradients)
 
     tower.update()
     tower.draw()
