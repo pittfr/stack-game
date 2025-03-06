@@ -18,16 +18,20 @@ PLATCENTEROFFSET = 25  # platform center offset
 MAXPERFECTOFFSETPERCENTAGE = 0.12  # maximum offset for a perfect placement
 MINVALIDSIDE = 0.15  # minimum valid side length for a platform
 
-COLORTHRESHOLD = 75  # color distance threshold for the gradients
+COLORTHRESHOLD = 65  # color distance threshold for the gradients
+BACKGROUNDLIGHTENING = 1.4  # background lightening factor
 BACKGROUNDDESATURATION = 0.4  # background desaturation factor
-MINCVALUE, MAXCVALUE = 25, 205  # MINIMUM AND MAXIMUM COLOR VALUES
+MINCVALUE, MAXCVALUE = 25, 175  # MINIMUM AND MAXIMUM COLOR VALUES
 MINNSTEPS, MAXNSTEPS = 7, 15  # MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
-BACKGROUNDROWGROUPSIZE = 5  # define the number of rows to group together
+BACKGROUND_ROW_GROUP_SIZE = 5  # define the number of rows to group together
 
 STARTVEL = 25  # starting platform velocity
 VELINCREMENT = 0.10  # velocity increment
 
 ISO_MULTIPLIER = 25
+
+NUM_NORMAL_STACK_SFX = 2  # number of normal stacking sound effects
+NUM_PERFECT_STACK_SFX = 20  # number of perfect stacking sound effects
 
 def getCurrentMonitorFramerate():
     """
@@ -60,23 +64,33 @@ perfectStackCounter = 0
 gameover = False
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
-gradients = []
 
 # load sound effects
 stackingSFXs = []
 perfectStackingSFXs = []
 
-for i in range(1, 3):
+for i in range(1, NUM_NORMAL_STACK_SFX + 1):
     try:
         stackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/normalStack/stack{i}.wav"))
     except pygame.error as e:
-        print(f"Error loading normalStack/{i}.wav: {e}")
+        print(f"Error loading assets/SFX/normalStack/{i}.wav: {e}")
 
-for i in range(1, 21):
+for i in range(1, NUM_PERFECT_STACK_SFX + 1):
     try:
         perfectStackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/perfectStack/perfect{i}.wav"))
     except pygame.error as e:
-        print(f"Error loading perfectStack/{i}.wav: {e}")
+        print(f"Error loading assets/SFX/perfectStack/{i}.wav: {e}")
+
+#animations
+
+def ease_in_out(t): # easing function for the animations (t is the time variable)
+        """
+        easing function for the animation
+        
+        t: time variable
+        returns eased time value
+        """
+        return 1 - (1 - t)**3
 
 # colors
 def lightenColor(rgb, factor=1.2):
@@ -110,50 +124,54 @@ def newGradient(startingColor):
     """
     creates a new gradient with the given starting color and adds it to the list of gradients
     """
-    global gradients, gradient
-    gradient = Gradient(startingColor)
-    gradients.append(gradient)
+    global background, gradient
+    gradient = Gradient(startingColor, background.gradients)
+    background.gradients.append(gradient)
     return gradient
-
-def drawBackground(screen, gradients):
-    """
-    draws the gradient background on the screen.
-    """
-    if not gradients:
-        return
-
-    currentGradient = gradients[-1]
-
-    for i in range(0, WINDOW_HEIGHT, BACKGROUNDROWGROUPSIZE):
-        # calculate the color for each group of rows
-        color = desaturateColor(
-                lightenColor(
-                    Gradient.getGradientColorFrom(currentGradient.startingColor, currentGradient.targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
-                ), 
-                BACKGROUNDDESATURATION
-            )
-        pygame.draw.rect(screen, color, (0, i, WINDOW_WIDTH, BACKGROUNDROWGROUPSIZE))
-
-    '''for i in range(WINDOW_HEIGHT):
-        color = desaturateColor(
-                lightenColor(
-                    Gradient.getGradientColorFrom(currentGradient.startingColor, currentGradient.targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
-                ), 
-                BACKGROUNDDESATURATION
-            )
-        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))'''
 
 # classes
 
+class Background:
+    def __init__(self, initial_color):
+        """initializes the background with a starting color and gradient transition settings"""
+        self.gradients = []
+        self.gradients.append(Gradient(initial_color, self.gradients))
+
+        self.offset_index = 0 # offset index for the gradient
+        self.transition_t = -1 # -1 means no transition, 0 to 1 means transition in progress
+        self.transition_duration = 0.5 # duration of the transition in seconds
+
+    def draw(self, screen):
+        """draws the gradient background with smooth transitions"""
+        if not self.gradients:
+            return
+        
+        current_gradient = self.gradients[-1]
+
+        for i in range(0, WINDOW_HEIGHT, BACKGROUND_ROW_GROUP_SIZE):
+            color = desaturateColor(
+                lightenColor(
+                    Gradient.getGradientColorFrom(
+                        current_gradient.startingColor, 
+                        self.gradients[-1].targetColor, 
+                        WINDOW_HEIGHT, 
+                        WINDOW_HEIGHT - i - 1
+                    ),
+                    BACKGROUNDLIGHTENING
+                ), 
+                BACKGROUNDDESATURATION
+            )
+            pygame.draw.rect(screen, color, (0, i, WINDOW_WIDTH, BACKGROUND_ROW_GROUP_SIZE))
+
 class Gradient:
-    def __init__(self, startingColor):
+    def __init__(self, startingColor, gradients):
         self.startingColor = startingColor
-        self.targetColor = self.generateTargetColor()
+        self.targetColor = self.generateTargetColor(gradients)
         self.numSteps = random.randint(MINNSTEPS, MAXNSTEPS)
         self.fromIndex = numPlats
         self.toIndex = numPlats + self.numSteps
 
-    def generateTargetColor(self):
+    def generateTargetColor(self, gradients):
         while True:
             targetColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
             if self.colorDistance(self.startingColor, targetColor) > COLORTHRESHOLD:
@@ -442,15 +460,6 @@ class Tower:
         
         return platforms
 
-    def ease_in_out(self, t): # easing function for the animation (t is the time variable)
-        """
-        easing function for the animation
-        
-        t: time variable
-        returns eased time value
-        """
-        return 1 - (1 - t)**3
-
     def add(self, plat): # called when the user presses the mouse button
         """
         adds a new platform to the tower and starts the animation
@@ -482,7 +491,7 @@ class Tower:
                 for i, platform in enumerate(self.platforms): # set the z positions of the platforms to the final z positions (to avoid floating point errors)
                     platform.vertices[:, 2] = self.final_z_positions[i]
             else: # if the animation is still running
-                eased_t = self.ease_in_out(self.t) # get the eased time
+                eased_t = ease_in_out(self.t) # get the eased time
 
                 for i, platform in enumerate(self.platforms): # update the z positions of the platforms
                     platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t
@@ -552,16 +561,16 @@ class Tower:
 #game functions
 
 def setupGame():
-    global initialColor, gradient, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, gradients, perfectStackCounter
+    global initialColor, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, background, perfectStackCounter
     
-    gradients = []
     numPlats = NSPLATS
     
     initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
-    newGradient(initialColor)
+
+    background = Background(initialColor)
 
     plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, True)
-    plat.setup(gradient.getCurrentColor())
+    plat.setup(background.gradients[-1].getCurrentColor())
     tower = Tower(NSPLATS, initialColor)
 
     previous_mouse_state = (0, 0, 0)
@@ -594,7 +603,7 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, gradients, score, gameover, perfectStackCounter
+    global plat, numPlats, platVelocity, background, score, gameover, perfectStackCounter
 
     lastPlat = tower.getLastPlat()
     nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
@@ -608,7 +617,7 @@ def handlePlatformPlacement():
             plat.width = nextPlatWidth
             plat.depth = nextPlatDepth
 
-# align the platform with the last platform
+            # align the platform with the last platform
             plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
             plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
 
@@ -624,7 +633,7 @@ def handlePlatformPlacement():
 
         lastPlat = tower.getLastPlat()
         plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, True)
-        plat.setup(gradients[-1].getCurrentColor())
+        plat.setup(background.gradients[-1].getCurrentColor())
         plat.align(lastPlat)
 
         if(perfectPlacement):
@@ -639,7 +648,7 @@ def drawGame(delta_time):
     global gameover
     screen.fill((0, 0, 0))
 
-    drawBackground(screen, gradients)
+    background.draw(screen)
 
     tower.update()
     tower.draw()
@@ -647,6 +656,13 @@ def drawGame(delta_time):
     if(not gameover):
         plat.update(delta_time)
         plat.drawFaces()
+
+def handleGameover():
+    global gameover, score
+    gameover = True
+    os.system("cls")
+    print(f"Game Over! Score: {score} \nRestarting...")
+    setupGame()
 
 # main game loop
 setupGame()
@@ -657,9 +673,8 @@ while running:
     handleEvents()
 
     if gameover:
-        setupGame()
-        os.system('cls')  # this line is for debug only
-
+        handleGameover()
+        
     drawGame(delta_time)
     pygame.display.flip()
 
