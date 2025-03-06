@@ -22,6 +22,7 @@ COLORTHRESHOLD = 75  # color distance threshold for the gradients
 BACKGROUNDDESATURATION = 0.4  # background desaturation factor
 MINCVALUE, MAXCVALUE = 25, 205  # MINIMUM AND MAXIMUM COLOR VALUES
 MINNSTEPS, MAXNSTEPS = 7, 15  # MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
+BACKGROUNDROWGROUPSIZE = 5  # define the number of rows to group together
 
 STARTVEL = 25  # starting platform velocity
 VELINCREMENT = 0.10  # velocity increment
@@ -122,17 +123,25 @@ def drawBackground(screen, gradients):
         return
 
     currentGradient = gradients[-1]
-    startColor = currentGradient.startingColor
-    targetColor = currentGradient.targetColor
 
-    for i in range(WINDOW_HEIGHT):
+    for i in range(0, WINDOW_HEIGHT, BACKGROUNDROWGROUPSIZE):
+        # calculate the color for each group of rows
         color = desaturateColor(
                 lightenColor(
-                    Gradient.getGradientColorFrom(startColor, targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
+                    Gradient.getGradientColorFrom(currentGradient.startingColor, currentGradient.targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
                 ), 
                 BACKGROUNDDESATURATION
             )
-        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))
+        pygame.draw.rect(screen, color, (0, i, WINDOW_WIDTH, BACKGROUNDROWGROUPSIZE))
+
+    '''for i in range(WINDOW_HEIGHT):
+        color = desaturateColor(
+                lightenColor(
+                    Gradient.getGradientColorFrom(currentGradient.startingColor, currentGradient.targetColor, WINDOW_HEIGHT, WINDOW_HEIGHT - i - 1)
+                ), 
+                BACKGROUNDDESATURATION
+            )
+        pygame.draw.line(screen, color, (0, i), (WINDOW_WIDTH, i))'''
 
 # classes
 
