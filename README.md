@@ -14,7 +14,7 @@ pip install pygame numpy pywin32
 
 1. Run the game using:
    ```sh
-   py stack_game.py
+   py stack.py
    ```
 2. Press the **spacebar** or **mouse click** to stop the moving block.
 3. Stack blocks precisely to avoid reducing the platform size.
