@@ -76,7 +76,7 @@ def setupGame():
 
     plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, platVelocity, numPlats, True)
     plat.setup(Gradient.getCurrentColor(numPlats, background.gradients))
-    tower = Tower(NSPLATS, initialColor, Platform)
+    tower = Tower(NSPLATS, initialColor)
 
     previous_mouse_state = (0, 0, 0)
     clock = pygame.time.Clock()

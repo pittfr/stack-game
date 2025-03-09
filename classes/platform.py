@@ -4,8 +4,6 @@ import numpy as np
 from constants import *
 from utils import lightenColor
 
-from classes.tower import Tower
-
 class Platform:
     def __init__(self, width, depth, height, platVelocity, numPlats, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)
         self.moving = moving
@@ -22,7 +20,7 @@ class Platform:
         self.edges = None
         self.faces = None
         
-    def setup(self, rgb, lastPlat = None):
+    def setup(self, rbg, lastPlat = None):
         """
         sets up the platform with the given color and aligns it with the last platform if provided
         
@@ -30,7 +28,7 @@ class Platform:
         lastPlat: the last platform object to align with
         """
         self.vertices = self.defineVertices(lastPlat)
-        self.colors = self.defineColors(rgb)
+        self.colors = self.defineColors(rbg)
         self.edges = self.defineVisibleEdges()
         self.faces = self.defineFaces()
 

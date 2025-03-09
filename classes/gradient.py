@@ -38,14 +38,15 @@ class Gradient:
         calculates the Euclidean distance between two RGB colors
         """
         return ((color1[0] - color2[0]) ** 2 + (color1[1] - color2[1]) ** 2 + (color1[2] - color2[2]) ** 2) ** 0.5
-
-    def getGradientColor(self, index):
-        sr, sg, sb = self.startingColor
-        tr, tg, tb = self.targetColor
+    
+    @staticmethod
+    def getGradientColor(gradient, index):
+        sr, sg, sb = gradient.startingColor
+        tr, tg, tb = gradient.targetColor
 
         def getRgb(svalue, tvalue):
             diff = tvalue - svalue
-            offset = diff / self.numSteps
+            offset = diff / gradient.numSteps
             value = svalue + (offset * (index + 1))
             return max(0, min(255, int(value)))
 
@@ -101,8 +102,38 @@ class Gradient:
     
     @staticmethod
     def getCurrentColor(numPlats, gradients):
-
         gradient = Gradient.getCurrentGradient(gradients, numPlats)
         index = numPlats - gradient.fromIndex
+        return Gradient.getGradientColor(gradient, index)
 
-        return gradient.getGradientColor(index)
+    @staticmethod
+    def getNextColor(numPlats, gradients, increment=1):
+        gradient = Gradient.getCurrentGradient(gradients, numPlats)
+        index = numPlats - gradient.fromIndex + increment
+
+        # check if the next index goes beyond the current gradient's range
+        while index > gradient.numSteps:
+            numPlats += gradient.numSteps + 1
+            gradient = Gradient.getCurrentGradient(gradients, numPlats)
+            index -= gradient.numSteps + 1
+
+        return Gradient.getGradientColor(gradient.startingColor, gradient.targetColor, gradient.numSteps, index)
+    
+    @staticmethod
+    def getCurrentColorInfo(numPlats, gradients):
+        gradient = Gradient.getCurrentGradient(gradients, numPlats)
+        index = numPlats - gradient.fromIndex
+        return gradient, index
+    
+    @staticmethod
+    def getNextColorInfo(numPlats, gradients, increment=1):
+        gradient = Gradient.getCurrentGradient(gradients, numPlats)
+        index = numPlats - gradient.fromIndex + increment
+
+        # check if the next index goes beyond the current gradient's range
+        while index > gradient.numSteps:
+            numPlats += gradient.numSteps + 1
+            gradient = Gradient.getCurrentGradient(gradients, numPlats)
+            index -= gradient.numSteps + 1
+
+        return gradient, index

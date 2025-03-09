@@ -19,14 +19,17 @@ class Background:
         if not self.gradients:
             return
         
-        current_gradient = Gradient.getCurrentGradient(self.gradients, numPlats)
+        #current_gradient = Gradient.getCurrentGradient(self.gradients, numPlats)
+
+        current_gradient, current_color_index = Gradient.getCurrentColorInfo(numPlats, self.gradients)
+        next_gradient, next_color_index = Gradient.getNextColorInfo(numPlats, self.gradients, BACKGROUND_COLORINDEX_DISTANCE)
 
         for i in range(0, WINDOW_HEIGHT, BACKGROUND_ROW_GROUP_SIZE):
             color = desaturateColor(
                 lightenColor(
                     Gradient.getGradientColorFrom(
-                        current_gradient.startingColor, 
-                        current_gradient.targetColor, 
+                        Gradient.getGradientColor(current_gradient, current_color_index), 
+                        Gradient.getGradientColor(next_gradient, next_color_index), 
                         WINDOW_HEIGHT, 
                         WINDOW_HEIGHT - i - 1
                     ),

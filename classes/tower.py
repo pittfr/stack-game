@@ -4,12 +4,12 @@ from constants import *
 from utils import ease_in_out
 
 from classes.gradient import Gradient
+from classes.platform import Platform
 
 class Tower:
-    def __init__(self, num, initialColor, Platform): # number of platforms, color of the first platform
+    def __init__(self, num, initialColor): # number of platforms, color of the first platform
         self.numStartingPlats = num
         self.initialColor = initialColor
-        self.Platform = Platform
         self.platforms = self.setupStartingPlatforms()
         self.t = -1 # time variable for the animation (-1 means the animation is not running, 0 to 1 means the animation is running)
         self.animationTime = 0.4 # time it takes for the animation to complete
@@ -27,7 +27,7 @@ class Tower:
         
         for i in range(self.numStartingPlats):
             z_offset = self.numStartingPlats * SPHEIGHT - (i) * SPHEIGHT # z offset for the starting platforms
-            platform = self.Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, 0, i, False, z_offset)
+            platform = Platform(SBASEWIDTH, SBASEDEPTH, SPHEIGHT, 0, i, False, z_offset)
             
             platform.setup(Gradient.getGradientColorFrom((0, 0, 0), self.initialColor, self.numStartingPlats, i))
             platforms.append(platform)
