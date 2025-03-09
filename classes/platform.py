@@ -149,7 +149,9 @@ class Platform:
             # adding some padding so they get centered
             iso_vertices = [(x + WINDOW_WIDTH // 2, y + WINDOW_HEIGHT // 2) for x, y in iso_vertices]
 
-            pygame.draw.polygon(screen, color, iso_vertices)
+            # draw the face if it's visible
+            if (iso_vertices[1][1] < WINDOW_HEIGHT):
+                pygame.draw.polygon(screen, color, iso_vertices)
 
     def drawEdges(self, screen):
         """
