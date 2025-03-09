@@ -117,7 +117,7 @@ class Gradient:
             gradient = Gradient.getCurrentGradient(gradients, numPlats)
             index -= gradient.numSteps + 1
 
-        return Gradient.getGradientColor(gradient.startingColor, gradient.targetColor, gradient.numSteps, index)
+        return Gradient.getGradientColor(gradient, index)
     
     @staticmethod
     def getCurrentColorInfo(numPlats, gradients):

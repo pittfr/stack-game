@@ -17,8 +17,10 @@ BACKGROUNDDESATURATION = 0.4  # background desaturation factor
 MINCVALUE, MAXCVALUE = 25, 175  # MINIMUM AND MAXIMUM COLOR VALUES
 MINNSTEPS, MAXNSTEPS = 7, 10  # MINIMUM AND MAXIMUM NUMBER OF STEPS FOR THE GRADIENT
 NEWGRADIENTCOUNT = 2  # number of new gradients to create at a time
+
 BACKGROUND_ROW_GROUP_SIZE = 5  # define the number of rows to group together
-BACKGROUND_COLORINDEX_DISTANCE = 5  # distance between the current and next color index
+BACKGROUND_ANIMATION_CHANCE = .5  # chance of a background animation
+MIN_DISTANCE, MAX_DISTANCE = 3, 5  # minimum and maximum distance between indexes of colors of the background gradient
 
 STARTVEL = 25  # starting platform velocity
 VELINCREMENT = 0.10  # velocity increment

@@ -43,6 +43,7 @@ perfectStackCounter = 0
 gameover = False
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
+distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a random distance
 
 # load sound effects
 stackingSFXs = []
@@ -63,7 +64,7 @@ for i in range(1, NUM_PERFECT_STACK_SFX + 1):
 #game functions
 
 def setupGame():
-    global initialColor, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, background, perfectStackCounter
+    global initialColor, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, background, perfectStackCounter, distance, current_distance
     
     numPlats = NSPLATS
     
@@ -71,6 +72,7 @@ def setupGame():
 
     background = Background()
     background.gradients.append(Gradient(initialColor, background.gradients, numPlats))
+    background.setup(numPlats, distance)
 
     platVelocity = STARTVEL
 
@@ -84,6 +86,7 @@ def setupGame():
     gameover = False
     score = numPlats - NSPLATS
     perfectStackCounter = 0
+    distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
 
 def handleEvents():
     global running, previous_mouse_state, gameover
@@ -107,7 +110,7 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, background, score, gameover, perfectStackCounter
+    global plat, numPlats, platVelocity, background, score, gameover, perfectStackCounter, distance, current_distance
 
     lastPlat = tower.getLastPlat()
     nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
@@ -150,6 +153,12 @@ def handlePlatformPlacement():
 
         Gradient.newGradients(background.gradients, numPlats)
 
+        # check if the background should transition to a new gradient
+        if (random.random() < BACKGROUND_ANIMATION_CHANCE) and (background.transition_progress >= 1):
+            background.startTransition(numPlats, distance)
+            current_distance = 0  # reset current distance after starting the transition
+            distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
+
 def handleGameover():
     global gameover, score
     gameover = True
@@ -158,11 +167,12 @@ def handleGameover():
     setupGame()
 
 def drawGame(delta_time):
-    global gameover, screen
+    global gameover, screen, numPlats
 
     screen.fill((0, 0, 0))
 
-    background.draw(screen, numPlats)
+    background.update(delta_time)
+    background.draw(screen)
 
     tower.update(FRAMERATE)
     tower.draw(screen, FRAMERATE)
