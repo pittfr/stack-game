@@ -408,8 +408,6 @@ class Platform:
 
         # calculate current dimensions
         current_width, _, current_depth = self.calculateDimensions(self)
-        
-        print(f"Expanding from: {self.final_vertices}")
 
         # set up expansion variables
         self.initial_vertices = self.vertices.copy()
@@ -421,7 +419,6 @@ class Platform:
         if self.direction == 0:  # width expansion (X axis)
             # check if it's already at maximum width
             if current_width >= MAXBASESIDE:
-                print("Already at maximum width")
                 self.expanding = False
                 self.expandDirection = 0
                 return self.width, self.depth, self.expanding
@@ -441,7 +438,6 @@ class Platform:
                     break
             
             if right_expansion_safe: # if expanding right face is safe, then expand it
-                print("Expanding right visible face")
                 self.expandDirection = 1
                 # apply the expansion
                 for i in right_face:
@@ -463,7 +459,6 @@ class Platform:
                         break
 
                 if left_expansion_safe: # if expanding left face is safe, then expand it
-                    print("Expanding left invisible face")
                     self.expandDirection = -1
 
                     for i in left_face:
@@ -482,7 +477,6 @@ class Platform:
 
             # check if already at maximum depth
             if current_depth >= MAXBASESIDE:
-                print("Already at maximum depth")
                 self.expanding = False
                 self.expandDirection = 0
                 return self.width, self.depth, self.expanding
@@ -502,7 +496,6 @@ class Platform:
                     break
             
             if left_expansion_safe: # if expanding the left face is safe, then expand it
-                print("Expanding left visible face")
                 self.expandDirection = 1
                 
                 # apply the expansion
@@ -526,7 +519,6 @@ class Platform:
                         break
 
                 if right_expansion_safe: # if expanding right face is safe, then expand it
-                    print("Expanding right invisible face")
                     self.expandDirection = -1
                     
                     # apply the expansion
@@ -549,8 +541,6 @@ class Platform:
         
         # round all final vertices to the specified number of decimal places
         self.final_vertices = np.round(self.final_vertices, DECIMALPLACES)
-
-        print(f"Expanding to: {self.final_vertices}")
 
         self.width, self.height, self.depth = self.calculateDimensions(self)
         return self.width, self.depth, self.expandDirection

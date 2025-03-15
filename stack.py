@@ -152,7 +152,6 @@ def handlePlatformPlacement():
         if(perfectPlacement):
             plat.perfectAlign(lastPlat)
             perfectStackCounter += 1
-            print(f"Perfect Stack Counter: {perfectStackCounter}")
             
             if(len(perfectStackingSFXs) > 0): 
                 perfectStackingSFXs[(perfectStackCounter % len(perfectStackingSFXs)) - 1].play()
@@ -180,7 +179,9 @@ def handlePlatformPlacement():
         numPlats = tower.getNumPlats()
         lastPlat = tower.getLastPlat()
 
-        print(f"Next Platform: {nextPlatWidth} x {nextPlatDepth}")
+        currentGradient = Gradient.getCurrentGradient(background.gradients, numPlats) 
+        if currentGradient is None or numPlats > currentGradient.toIndex: # if the current gradient is not valid, then generate new gradients
+            Gradient.newGradients(background.gradients, numPlats)
 
         plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, platVelocity, numPlats, True)
         plat.setup(Gradient.getCurrentColor(numPlats, background.gradients))
@@ -188,8 +189,6 @@ def handlePlatformPlacement():
         plat.align(lastPlat)
 
         print(score)
-
-        Gradient.newGradients(background.gradients, numPlats)
 
         # check if the background should transition to a new gradient
         if (random.random() < BACKGROUND_ANIMATION_CHANCE) and (background.transition_progress >= 1):

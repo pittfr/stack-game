@@ -20,7 +20,7 @@ EXPAND_MARGIN = 1.5  # margin for expanding the platform
 
 DEFAULTALIGNINDEX = 0  # default alignment index
 
-COLORTHRESHOLD = 65  # color distance threshold for the gradients
+COLORTHRESHOLD = 30  # color distance threshold for the gradients
 BACKGROUNDLIGHTENING = 1.4  # background lightening factor
 BACKGROUNDDESATURATION = 0.4  # background desaturation factor
 MINCVALUE, MAXCVALUE = 25, 175  # MINIMUM AND MAXIMUM COLOR VALUES
