@@ -40,7 +40,10 @@ class Tower:
         
         plat: the new platform object to add
         """
+        
         plat.moving = False # the platform is no longer moving
+        if(not plat.expanding):
+            plat.final_vertices = plat.vertices.copy()
         self.platforms.append(plat) # add the platform to the tower
 
         shift_amount = plat.height # the amount the platform will be shifted down
@@ -56,7 +59,10 @@ class Tower:
     def getTowers(self): # returns the array of objects
         return self.platforms
 
-    def update(self, framerate):
+    def update(self, framerate, delta_time, screen):
+        for plat in (self.platforms):
+            plat.update(delta_time)
+            
         if self.t != -1: # if the animation is running
             self.t += 1 / (framerate * self.animationTime) #increment the time variable
 
@@ -69,6 +75,9 @@ class Tower:
 
                 for i, platform in enumerate(self.platforms): # update the z positions of the platforms
                     platform.vertices[:, 2] = self.initial_z_positions[i] + (self.final_z_positions[i] - self.initial_z_positions[i]) * eased_t
+
+            for plat in self.platforms:
+                plat.final_vertices[:, 2] = plat.vertices.copy()[:, 2]
 
     def getTrimming(self, currentPlat, lastPlat): # trim the current platform to fit the last platform
         def dynamicPerfectOffset(size):
@@ -127,7 +136,7 @@ class Tower:
     def getLastPlat(self): # returns the last platform in the tower
         return self.platforms[-1]
 
-    def draw(self, screen, framerate):
-        self.update(framerate)
+    def draw(self, framerate, delta_time, screen):
+        self.update(framerate, delta_time, screen)
         for plat in (self.platforms):
-            plat.drawFaces(screen)
+            plat.draw(screen)

@@ -2,14 +2,23 @@
 WINDOW_WIDTH = 650
 WINDOW_HEIGHT = 1000
 
+DECIMALPLACES = 3  # number of decimal places to round to
+
 SPHEIGHT = 5  # starting platform height
 PHEIGHT = 2  # platform height
 NSPLATS = 3  # number of starting platforms
 SBASEWIDTH = 12.5  # starting base's width
-SBASEDEPTH = 12.5  # starting base's height
+SBASEDEPTH = SBASEWIDTH  # starting base's height
+MAXBASESIDE = SBASEWIDTH  # maximum base side length
 PLATCENTEROFFSET = 25  # platform center offset
 MAXPERFECTOFFSETPERCENTAGE = 0.12  # maximum offset for a perfect placement
 MINVALIDSIDE = 0.15  # minimum valid side length for a platform
+
+PERFECT_STACKS_TO_EXPAND = 8 # number of perfect stacks to expand the platform
+EXPANDAMOUNT = 2.5  # amount to expand the platform by
+EXPAND_MARGIN = 1.5  # margin for expanding the platform
+
+DEFAULTALIGNINDEX = 0  # default alignment index
 
 COLORTHRESHOLD = 65  # color distance threshold for the gradients
 BACKGROUNDLIGHTENING = 1.4  # background lightening factor
@@ -20,12 +29,13 @@ NEWGRADIENTCOUNT = 2  # number of new gradients to create at a time
 
 BACKGROUND_ROW_GROUP_SIZE = 5  # define the number of rows to group together
 BACKGROUND_ANIMATION_CHANCE = .5  # chance of a background animation
-MIN_DISTANCE, MAX_DISTANCE = 3, 5  # minimum and maximum distance between indexes of colors of the background gradient
+MIN_DISTANCE, MAX_DISTANCE = 1, 3  # minimum and maximum distance between indexes of colors of the background gradient
 
-STARTVEL = 25  # starting platform velocity
-VELINCREMENT = 0.10  # velocity increment
+STARTVEL = 26.5  # starting platform velocity
+VELINCREMENT = 0.20  # velocity increment
 
 ISO_MULTIPLIER = 25
 
 NUM_NORMAL_STACK_SFX = 2  # number of normal stacking sound effects
 NUM_PERFECT_STACK_SFX = 20  # number of perfect stacking sound effects
+NUM_EXPAND_SFX = 2  # number of expand sound effects

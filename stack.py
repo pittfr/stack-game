@@ -28,6 +28,15 @@ except pygame.error as e:
     print(f"Failed to initialize Pygame: {e}")
     exit(1)
 
+# initialize mixer
+try:
+    pygame.mixer.init()
+except pygame.error as e:
+    if "WASAPI can't find requested audio endpoint" in str(e):
+        print("No sound device connected. Sound will be disabled.")
+    else:
+        print(f"Failed to initialize mixer: {e}")
+
 FRAMERATE = getCurrentMonitorFramerate()
 print(FRAMERATE)
 
@@ -44,10 +53,12 @@ gameover = False
 nextPlatWidth = SBASEWIDTH
 nextPlatDepth = SBASEDEPTH
 distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a random distance
+perfectAlignmentMode = False # whether the player is in perfect alignment mode
 
 # load sound effects
 stackingSFXs = []
 perfectStackingSFXs = []
+expandSFXs = []
 
 for i in range(1, NUM_NORMAL_STACK_SFX + 1):
     try:
@@ -61,13 +72,19 @@ for i in range(1, NUM_PERFECT_STACK_SFX + 1):
     except pygame.error as e:
         print(f"Error loading assets/SFX/perfectStack/{i}.wav: {e}")
 
+for i in range(1, NUM_EXPAND_SFX + 1):
+    try:
+        expandSFXs.append(pygame.mixer.Sound(f"assets/SFX/expandPlatform/expand{i}.wav"))
+    except pygame.error as e:
+        print(f"Error loading assets/SFX/expandPlatform/expand{i}.wav: {e}")
+
 #game functions
 
 def setupGame():
     global initialColor, plat, tower, previous_mouse_state, clock, running, gameover, score, platVelocity, numPlats, background, perfectStackCounter, distance, current_distance
-    
+
     numPlats = NSPLATS
-    
+
     initialColor = (random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE), random.randint(MINCVALUE, MAXCVALUE))
 
     background = Background()
@@ -86,10 +103,14 @@ def setupGame():
     gameover = False
     score = numPlats - NSPLATS
     perfectStackCounter = 0
-    distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
+    distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance for the background transition
 
 def handleEvents():
-    global running, previous_mouse_state, gameover
+    global running, previous_mouse_state, gameover, perfectAlignmentMode
+
+    # check if Caps Lock is on instead of Shift
+    caps_lock_state = pygame.key.get_mods() & pygame.KMOD_CAPS  # check Caps Lock state
+    perfectAlignmentMode = caps_lock_state > 0  # true if Caps Lock is on
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -110,45 +131,62 @@ def handleEvents():
     previous_mouse_state = current_mouse_state
 
 def handlePlatformPlacement():
-    global plat, numPlats, platVelocity, background, score, gameover, perfectStackCounter, distance, current_distance
+    global plat, numPlats, platVelocity, background, score, gameover, perfectStackCounter, distance, current_distance, perfectAlignmentMode
 
     lastPlat = tower.getLastPlat()
-    nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, tower.getLastPlat())
+    nextPlatWidth, nextPlatDepth, perfectPlacement = tower.getTrimming(plat, lastPlat)
+    nextPlatWidth, nextPlatDepth = round(nextPlatWidth, DECIMALPLACES), round(nextPlatDepth, DECIMALPLACES)
 
-    if(perfectPlacement):
-        plat.width = lastPlat.width
-        plat.depth = lastPlat.depth
-        plat.align(lastPlat, perfectPlacement)
-    else:
-        if (nextPlatWidth != plat.width or nextPlatDepth != plat.depth):
-            plat.width = nextPlatWidth
-            plat.depth = nextPlatDepth
-
-            # align the platform with the last platform
-            plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
-            plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
+    # force perfect placement if capslock is on
+    if perfectAlignmentMode:
+        perfectPlacement = True
+        nextPlatWidth = lastPlat.width
+        nextPlatDepth = lastPlat.depth
 
     platVelocity += VELINCREMENT
-    
-    if(nextPlatWidth <= MINVALIDSIDE or nextPlatDepth <= MINVALIDSIDE):
-        gameover = True
-    else:
+
+    # check if the platform dimensions are valid
+    if(nextPlatWidth > MINVALIDSIDE and nextPlatDepth > MINVALIDSIDE):
         score = numPlats - NSPLATS + 1
-        tower.add(plat)
-
-        numPlats = tower.getNumPlats()
-
-        lastPlat = tower.getLastPlat()
-        plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, platVelocity, numPlats, True)
-        plat.setup(Gradient.getCurrentColor(numPlats, background.gradients))
-        plat.align(lastPlat)
 
         if(perfectPlacement):
+            plat.perfectAlign(lastPlat)
             perfectStackCounter += 1
-            perfectStackingSFXs[(perfectStackCounter % len(perfectStackingSFXs)) - 1].play()
+            print(f"Perfect Stack Counter: {perfectStackCounter}")
+            
+            if(len(perfectStackingSFXs) > 0): 
+                perfectStackingSFXs[(perfectStackCounter % len(perfectStackingSFXs)) - 1].play()
+
+            # check if the player has stacked enough perfect platforms to expand the platform
+            if(perfectStackCounter >= PERFECT_STACKS_TO_EXPAND):
+                nextPlatWidth, nextPlatDepth, expandDirection = plat.expand()
+
+                if(len(expandSFXs) > 0 and expandDirection != 0): # if the platform expanded
+                    random.choice(expandSFXs).play() 
+
         else:
-            random.choice(stackingSFXs).play()
             perfectStackCounter = 0
+            if(len(stackingSFXs) > 0):
+                random.choice(stackingSFXs).play()
+            if (nextPlatWidth != plat.width or nextPlatDepth != plat.depth):
+                plat.width = nextPlatWidth
+                plat.depth = nextPlatDepth
+
+                # align the platform with the last platform
+                plat.vertices[:, 0] = np.clip(plat.vertices[:, 0], min(lastPlat.vertices[:, 0]), max(lastPlat.vertices[:, 0]))
+                plat.vertices[:, 1] = np.clip(plat.vertices[:, 1], min(lastPlat.vertices[:, 1]), max(lastPlat.vertices[:, 1]))
+
+        tower.add(plat)
+        numPlats = tower.getNumPlats()
+        lastPlat = tower.getLastPlat()
+
+        print(f"Next Platform: {nextPlatWidth} x {nextPlatDepth}")
+
+        plat = Platform(nextPlatWidth, nextPlatDepth, PHEIGHT, platVelocity, numPlats, True)
+        plat.setup(Gradient.getCurrentColor(numPlats, background.gradients))
+
+        plat.align(lastPlat)
+
         print(score)
 
         Gradient.newGradients(background.gradients, numPlats)
@@ -158,6 +196,8 @@ def handlePlatformPlacement():
             background.startTransition(numPlats, distance)
             current_distance = 0  # reset current distance after starting the transition
             distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
+    else:
+        gameover = True
 
 def handleGameover():
     global gameover, score
@@ -169,17 +209,13 @@ def handleGameover():
 def drawGame(delta_time):
     global gameover, screen, numPlats
 
-    screen.fill((0, 0, 0))
+    background.draw(screen, delta_time)
 
-    background.update(delta_time)
-    background.draw(screen)
-
-    tower.update(FRAMERATE)
-    tower.draw(screen, FRAMERATE)
+    tower.draw(FRAMERATE, delta_time, screen)
 
     if(not gameover):
         plat.update(delta_time)
-        plat.drawFaces(screen)
+        plat.draw(screen)
 
 # main game loop
 setupGame()
@@ -195,4 +231,5 @@ while running:
     drawGame(delta_time)
     pygame.display.flip()
 
+pygame.mixer.quit()
 pygame.quit()

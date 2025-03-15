@@ -51,8 +51,11 @@ class Background:
         else:
             self.currentColors = self.targetColors
 
-    def draw(self, screen):
+    def draw(self, screen, delta_time):
         """draws the gradient background with smooth transitions"""
+        
+        self.update(delta_time)
+
         if not self.gradients:
             return
 
