@@ -1,7 +1,7 @@
 import numpy as np
 
 from constants import *
-from utils import ease_in_out
+from utils.utils import ease_in_out
 
 from classes.gradient import Gradient
 from classes.platform import Platform

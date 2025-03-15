@@ -2,7 +2,7 @@ import pygame
 import numpy as np
 
 from constants import *
-from utils import lightenColor, ease_in_out
+from utils.utils import lightenColor, ease_in_out
 
 class Platform:
     def __init__(self, width, depth, height, platVelocity, numPlats, moving, z_offset = PHEIGHT): #moving can either be true or false (false means the platform is a part of the tower)

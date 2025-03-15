@@ -1,6 +1,10 @@
+from utils.system_utils import getCurrentMonitorFramerate
+
 # constants
 WINDOW_WIDTH = 650
 WINDOW_HEIGHT = 1000
+
+FRAMERATE = getCurrentMonitorFramerate()  # get the monitor's refresh rate
 
 DECIMALPLACES = 3  # number of decimal places to round to
 

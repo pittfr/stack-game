@@ -1,7 +1,7 @@
 import pygame
 
 from constants import *
-from utils import lightenColor, desaturateColor
+from utils.utils import lightenColor, desaturateColor
 
 from classes.gradient import Gradient
 
