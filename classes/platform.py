@@ -194,7 +194,7 @@ class Platform:
             iso_vertices = [(x + WINDOW_WIDTH // 2, y + WINDOW_HEIGHT // 2) for x, y in iso_vertices]
 
             # draw the face if it's visible
-            if (iso_vertices[1][1] < WINDOW_HEIGHT):
+            if any(0 <= x < WINDOW_WIDTH and 0 <= y < WINDOW_HEIGHT for x, y in iso_vertices):
                 pygame.draw.polygon(screen, color, iso_vertices)
 
     def drawTargetEdges(self, screen):
