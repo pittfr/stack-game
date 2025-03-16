@@ -1,4 +1,4 @@
-from utils.system_utils import getCurrentMonitorFramerate
+from utils.system_utils import getCurrentMonitorFramerate, count_sounds_in_directory
 
 # constants
 WINDOW_WIDTH = 650
@@ -9,7 +9,7 @@ FRAMERATE = getCurrentMonitorFramerate()  # get the monitor's refresh rate
 DECIMALPLACES = 3  # number of decimal places to round to
 
 SPHEIGHT = 5  # starting platform height
-PHEIGHT = 2  # platform height
+PHEIGHT = 1.5  # platform height
 NSPLATS = 3  # number of starting platforms
 SBASEWIDTH = 12.5  # starting base's width
 SBASEDEPTH = SBASEWIDTH  # starting base's height
@@ -40,8 +40,10 @@ VELINCREMENT = 0.20  # velocity increment
 
 ISO_MULTIPLIER = 25
 
-NUM_NORMAL_STACK_SFX = 2  # number of normal stacking sound effects
-NUM_PERFECT_STACK_SFX = 20  # number of perfect stacking sound effects
-NUM_EXPAND_SFX = 2  # number of expand sound effects
+NUM_NORMAL_STACK_SFX = count_sounds_in_directory("assets/SFX/normalStack")  # number of normal stacking sound effects
+NUM_PERFECT_STACK_SFX = count_sounds_in_directory("assets/SFX/perfectStack")  # number of perfect stacking sound effects
+NUM_EXPAND_SFX = count_sounds_in_directory("assets/SFX/expandPlatform")  # number of expand sound effects
+NUM_PAUSE_GAME_SFX = count_sounds_in_directory("assets/SFX/pauseGame")  # number of pause game sound effects
+NUM_BUTTON_CLICK_SFX = count_sounds_in_directory("assets/SFX/buttonClick")  # number of button click sound effects
 
 ARIAL_BLACK_PATH = "assets/fonts/Arial-Black.ttf"  # font path

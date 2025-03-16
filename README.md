@@ -19,30 +19,42 @@ Stack Game is a simple yet engaging stacking game where players must place platf
 ## Project Structure
 ```
 .
-├── src
+├── src                        # source code
 │   ├── main.py                # entry point for the game
 │   ├── constants.py           # constant values used throughout the game
-│   ├── classes
+│   ├── classes                # game-related classes
 │   │   ├── background.py      # background management
+│   │   ├── game.py            # game logic
 │   │   ├── gradient.py        # gradient handling
 │   │   ├── platform.py        # platform representation
 │   │   ├── tower.py           # tower management
-│   │   ├── game.py            # game logic
-│   └── utils
-│       ├── utils.py           # general utility functions
+│   │   ├── ui.py              # UI handling
+│   │   ├── button.py          # button handling
+│   ├── utils                  # utility functions
+│       ├── utils.py           # general utilities
 │       ├── system_utils.py    # system-related utilities
-├── assets
-│   └── SFX
-│       ├── normalStack        # sound effects for normal stacking
-│       │   ├── stack1.wav
-│       │   ├── stack2.wav
-│       ├── perfectStack       # sound effects for perfect stacking
-│       │   ├── perfect1.wav
-│       │   ├── perfect2.wav
-│       │   ├── ... (more sounds)
-│       ├── expandPlatform     # sound effects for platform expansion
-│       │   ├── expand1.wav
-│       │   ├── expand2.wav
+├── assets                     # game assets
+│   ├── SFX                    # sound effects
+│   │   ├── expandPlatform     # sounds for platform expansion
+│   │   │   ├── expand1.wav
+│   │   │   ├── expand2.wav
+│   │   ├── normalStack        # sounds for normal stacking
+│   │   │   ├── stack1.wav
+│   │   │   ├── stack2.wav
+│   │   ├── perfectStack       # sounds for perfect stacking
+│   │   │   ├── perfect1.wav
+│   │   │   ├── perfect2.wav
+│   │   │   ├── ... (more sounds)
+│   │   ├── pauseGame          # sounds for pausing the game
+│   │   │   ├── pause1.wav
+│   │   ├── buttonClick        # sounds for button clicks
+│   │   │   ├── click1.wav
+│   ├── fonts                  # font files
+│   │   ├── Arial-Black.ttf
+│   ├── images                 # image assets
+│       ├── settingsIcon       # settings icons
+│       │   ├── gear_solid.png
+│       │   ├── gear_solid_hover.png
 ├── .gitignore                 # git ignore file
 ├── README.md                  # project documentation
 ```

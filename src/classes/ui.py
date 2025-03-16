@@ -1,15 +1,42 @@
 import pygame
 
+from classes.button import Button
 from constants import *
 
 class UI:
-    def __init__(self):
+    def __init__(self, game):
+        self.game = game # reference to the game
         self.score_font = pygame.font.Font(ARIAL_BLACK_PATH, 100)
 
         self.last_score = -1 # last score to know when to re-render
         self.score_surface = None
         self.score_rect = None
 
+        # load settings icon
+        try:
+            self.settings_img = pygame.image.load("assets/images/settingsIcon/gear_solid.png").convert_alpha()
+        except pygame.error as e:
+            print(f"Error loading assets/images/settingsIcon/gear_solid.png: {e}")
+        
+        try:
+            self.settings_img_hover = pygame.image.load("assets/images/settingsIcon/gear_solid_hover.png").convert_alpha()
+        except pygame.error as e:
+            print(f"Error loading assets/images/settingsIcon/gear_solid_hover.png: {e}")
+
+        self.settings_button = Button(
+            pos=(10, 10),
+            image=self.settings_img,
+            image_hover=self.settings_img_hover,
+            action=self.game.toggle_settings,
+            scale=0.1
+        )
+
+    def isAnyButtonHovered(self):
+        return self.settings_button.hovered
+
+    def drawSettingsButton(self, screen):
+        self.settings_button.update()
+        self.settings_button.draw(screen)
 
     def drawScore(self, screen, score):
         if score != self.last_score:
@@ -21,3 +48,4 @@ class UI:
 
     def drawUi(self, screen, score):
         self.drawScore(screen, score)
+        self.drawSettingsButton(screen)

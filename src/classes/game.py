@@ -18,16 +18,21 @@ class Game:
         pygame.display.set_caption("Stack!")
         
         # game variables
-        self.platVelocity = STARTVEL
         self.numPlats = NSPLATS
         self.score = self.numPlats - NSPLATS
+        self.platVelocity = STARTVEL
         self.perfectStackCounter = 0
-        self.gameover = False
         self.nextPlatWidth = SBASEWIDTH
         self.nextPlatDepth = SBASEDEPTH
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
+
         self.perfectAlignmentMode = False
+
+        self.gameover = False
         self.running = True
+        self.paused = False
+        self.settings_open = False
+
         self.clock = pygame.time.Clock()
         self.previous_mouse_state = (0, 0, 0)
 
@@ -35,12 +40,14 @@ class Game:
         self.stackingSFXs = []
         self.perfectStackingSFXs = []
         self.expandSFXs = []
+        self.pauseGameSFX = []
+        self.buttonClickSFX = []
         
         self.load_sound_effects()
         self.setup()
 
         # load ui
-        self.ui = UI()
+        self.ui = UI(self)
     
     def load_sound_effects(self):
         for i in range(1, NUM_NORMAL_STACK_SFX + 1):
@@ -60,9 +67,22 @@ class Game:
                 self.expandSFXs.append(pygame.mixer.Sound(f"assets/SFX/expandPlatform/expand{i}.wav"))
             except pygame.error as e:
                 print(f"Error loading assets/SFX/expandPlatform/expand{i}.wav: {e}")
+
+        for i in range(1, NUM_PAUSE_GAME_SFX + 1):
+            try:
+                self.pauseGameSFX.append(pygame.mixer.Sound(f"assets/SFX/pauseGame/pause{i}.wav"))
+            except pygame.error as e:
+                print(f"Error loading assets/SFX/pauseGame/pause{i}.wav: {e}")
+        
+        for i in range(1, NUM_BUTTON_CLICK_SFX + 1):
+            try:
+                self.buttonClickSFX.append(pygame.mixer.Sound(f"assets/SFX/buttonClick/click{i}.wav"))
+            except pygame.error as e:
+                print(f"Error loading assets/SFX/buttonClick/click{i}.wav: {e}")
     
     def setup(self):
         self.numPlats = NSPLATS
+        self.score = self.numPlats - NSPLATS
         
         self.initialColor = (random.randint(MINCVALUE, MAXCVALUE), 
                             random.randint(MINCVALUE, MAXCVALUE), 
@@ -80,11 +100,27 @@ class Game:
 
         self.previous_mouse_state = (0, 0, 0)
         self.clock = pygame.time.Clock()
-        self.running = True
+
         self.gameover = False
-        self.score = self.numPlats - NSPLATS
+        self.running = True
+        self.paused = False
+        self.settings_open = False
+
         self.perfectStackCounter = 0
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
+
+    def toggle_pause(self):
+        self.paused = not self.paused
+        print(f"Game is {'paused' if self.paused else 'resumed'}")
+
+    def toggle_settings(self):
+        if not self.settings_open: # opening settings
+            if len(self.pauseGameSFX) > 0:
+                random.choice(self.pauseGameSFX).play()
+                
+        self.settings_open = not self.settings_open
+        self.paused = self.settings_open
+        print(f"Settings {'opened' if self.settings_open else 'closed'}!")
 
     def handle_events(self):
         # check if Caps Lock is on instead of Shift
@@ -96,7 +132,7 @@ class Game:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    if not self.gameover:
+                    if not self.gameover and not self.settings_open and not self.paused:
                         self.handle_platform_placement()
                 elif event.key == pygame.K_r:
                     self.gameover = True
@@ -104,7 +140,7 @@ class Game:
         current_mouse_state = pygame.mouse.get_pressed()
 
         if current_mouse_state[0] and not self.previous_mouse_state[0]:
-            if not self.gameover:
+            if not self.gameover and not self.settings_open and not self.paused and not self.ui.isAnyButtonHovered():
                 self.handle_platform_placement()
 
         self.previous_mouse_state = current_mouse_state
@@ -165,8 +201,6 @@ class Game:
 
             self.plat.align(lastPlat)
 
-            print(self.score)
-
             # check if the background should transition to a new gradient
             if random.random() < BACKGROUND_ANIMATION_CHANCE and self.background.transition_progress >= 1:
                 self.background.startTransition(self.numPlats, self.distance)
@@ -184,10 +218,13 @@ class Game:
     def draw_game(self, delta_time):
         self.background.draw(self.screen, delta_time)
 
-        self.tower.draw(FRAMERATE, delta_time, self.screen)
+        if not self.paused:
+            self.tower.update(FRAMERATE, delta_time)
+            self.plat.update(delta_time)
+        
+        self.tower.draw(self.screen)
 
         if not self.gameover:
-            self.plat.update(delta_time)
             self.plat.draw(self.screen)
 
         self.ui.drawUi(self.screen, self.score)
