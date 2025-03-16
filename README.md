@@ -28,11 +28,12 @@ Stack Game is a simple yet engaging stacking game where players must place platf
 │   │   ├── gradient.py        # gradient handling
 │   │   ├── platform.py        # platform representation
 │   │   ├── tower.py           # tower management
-│   │   ├── ui.py              # UI handling
-│   │   ├── button.py          # button handling
+│   │   ├── ui                 # UI handling
+│   │   │   ├── button.py      # button handling
+│   │   │   ├── ui_manager.py  # UI management
 │   ├── utils                  # utility functions
-│       ├── utils.py           # general utilities
-│       ├── system_utils.py    # system-related utilities
+│   │   ├── utils.py           # general utilities
+│   │   ├── system_utils.py    # system-related utilities
 ├── assets                     # game assets
 │   ├── SFX                    # sound effects
 │   │   ├── expandPlatform     # sounds for platform expansion
@@ -52,9 +53,9 @@ Stack Game is a simple yet engaging stacking game where players must place platf
 │   ├── fonts                  # font files
 │   │   ├── Arial-Black.ttf
 │   ├── images                 # image assets
-│       ├── settingsIcon       # settings icons
-│       │   ├── gear_solid.png
-│       │   ├── gear_solid_hover.png
+│   │   ├── settingsIcon       # settings icons
+│   │   │   ├── gear_solid.png
+│   │   │   ├── gear_solid_hover.png
 ├── .gitignore                 # git ignore file
 ├── README.md                  # project documentation
 ```

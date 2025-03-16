@@ -1,6 +1,6 @@
 import pygame
 
-from classes.button import Button
+from classes.ui.button import Button
 from constants import *
 
 class UI:
