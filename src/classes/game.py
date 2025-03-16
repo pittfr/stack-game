@@ -5,7 +5,7 @@ import os
 
 from constants import *
 
-from classes.ui import UI
+from classes.ui.ui_manager import UI
 from classes.background import Background
 from classes.gradient import Gradient
 from classes.platform import Platform
@@ -41,15 +41,16 @@ class Game:
         self.perfectStackingSFXs = []
         self.expandSFXs = []
         self.pauseGameSFX = []
+        self.resumeGameSFX = []
         self.buttonClickSFX = []
         
-        self.load_sound_effects()
+        self.loadSoundEffects()
         self.setup()
 
         # load ui
         self.ui = UI(self)
     
-    def load_sound_effects(self):
+    def loadSoundEffects(self):
         for i in range(1, NUM_NORMAL_STACK_SFX + 1):
             try:
                 self.stackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/normalStack/stack{i}.wav"))
@@ -73,6 +74,12 @@ class Game:
                 self.pauseGameSFX.append(pygame.mixer.Sound(f"assets/SFX/pauseGame/pause{i}.wav"))
             except pygame.error as e:
                 print(f"Error loading assets/SFX/pauseGame/pause{i}.wav: {e}")
+
+        for i in range(1, NUM_RESUME_GAME_SFX + 1):
+            try:
+                self.resumeGameSFX.append(pygame.mixer.Sound(f"assets/SFX/resumeGame/resume{i}.wav"))
+            except pygame.error as e:
+                print(f"Error loading assets/SFX/resumeGame/resume{i}.wav: {e}")
         
         for i in range(1, NUM_BUTTON_CLICK_SFX + 1):
             try:
@@ -109,20 +116,28 @@ class Game:
         self.perfectStackCounter = 0
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
 
-    def toggle_pause(self):
-        self.paused = not self.paused
-        print(f"Game is {'paused' if self.paused else 'resumed'}")
+    def togglePause(self):
+        isPausing = not self.paused
 
-    def toggle_settings(self):
-        if not self.settings_open: # opening settings
+        if isPausing: # opening settings
             if len(self.pauseGameSFX) > 0:
                 random.choice(self.pauseGameSFX).play()
-                
+        else: # closing settings
+            if len(self.resumeGameSFX) > 0:
+                random.choice(self.resumeGameSFX).play()
+        
+        self.paused = isPausing
+        
+        self.ui.handlePauseStateChange(isPausing)
+
+        print(f"Game is {'paused' if self.paused else 'resumed'}")
+
+    def toggleSettings(self):                
         self.settings_open = not self.settings_open
         self.paused = self.settings_open
         print(f"Settings {'opened' if self.settings_open else 'closed'}!")
 
-    def handle_events(self):
+    def handleEvents(self):
         # check if Caps Lock is on instead of Shift
         caps_lock_state = pygame.key.get_mods() & pygame.KMOD_CAPS
         self.perfectAlignmentMode = caps_lock_state > 0
@@ -133,7 +148,7 @@ class Game:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     if not self.gameover and not self.settings_open and not self.paused:
-                        self.handle_platform_placement()
+                        self.handlePlatformPlacement()
                 elif event.key == pygame.K_r:
                     self.gameover = True
 
@@ -141,11 +156,11 @@ class Game:
 
         if current_mouse_state[0] and not self.previous_mouse_state[0]:
             if not self.gameover and not self.settings_open and not self.paused and not self.ui.isAnyButtonHovered():
-                self.handle_platform_placement()
+                self.handlePlatformPlacement()
 
         self.previous_mouse_state = current_mouse_state
 
-    def handle_platform_placement(self):
+    def handlePlatformPlacement(self):
         lastPlat = self.tower.getLastPlat()
         nextPlatWidth, nextPlatDepth, perfectPlacement = self.tower.getTrimming(self.plat, lastPlat)
         nextPlatWidth, nextPlatDepth = round(nextPlatWidth, DECIMALPLACES), round(nextPlatDepth, DECIMALPLACES)
@@ -209,10 +224,10 @@ class Game:
         else:
             self.gameover = True
 
-    def handle_gameover(self):
+    def handleGameover(self):
         self.gameover = True
         os.system("cls")
-        print(f"Game Over! Score: {self.score} \nRestarting...")
+        print(f"Game Over!\nRestarting...")
         self.setup()
 
     def draw_game(self, delta_time):
@@ -227,4 +242,4 @@ class Game:
         if not self.gameover:
             self.plat.draw(self.screen)
 
-        self.ui.drawUi(self.screen, self.score)
+        self.ui.drawUi(self.screen, self.score, self.paused)

@@ -48,16 +48,22 @@ Stack Game is a simple yet engaging stacking game where players must place platf
 │   │   │   ├── ... (more sounds)
 │   │   ├── pauseGame          # sounds for pausing the game
 │   │   │   ├── pause1.wav
+│   │   ├── resumeGame         # sounds for resuming the game
+│   │   │   ├── resume1.wav
 │   │   ├── buttonClick        # sounds for button clicks
 │   │   │   ├── click1.wav
 │   ├── fonts                  # font files
 │   │   ├── Arial-Black.ttf
+│   │   ├── Cresta-Light.ttf
+│   │   ├── Cresta-Regular.ttf
+│   │   ├── Cresta-Hairline.ttf
 │   ├── images                 # image assets
 │   │   ├── settingsIcon       # settings icons
 │   │   │   ├── gear_solid.png
 │   │   │   ├── gear_solid_hover.png
-├── .gitignore                 # git ignore file
-├── README.md                  # project documentation
+│   │   ├── pauseIcon          # pause icons
+│   │   │   ├── pause_solid.png
+│   │   │   ├── pause_solid_hover.png
 ```
 
 ## Installation

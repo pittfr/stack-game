@@ -28,10 +28,10 @@ game = Game()
 while game.running:
     delta_time = game.clock.tick(FRAMERATE) / 1000.0  # delta_time is the time it takes to render one frame
 
-    game.handle_events()
+    game.handleEvents()
 
     if game.gameover:
-        game.handle_gameover()
+        game.handleGameover()
         
     game.draw_game(delta_time)
     pygame.display.flip()
