@@ -22,7 +22,6 @@ except pygame.error as e:
 
 print(FRAMERATE)
 
-
 # main game loop
 game = Game()
 

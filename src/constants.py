@@ -43,3 +43,5 @@ ISO_MULTIPLIER = 25
 NUM_NORMAL_STACK_SFX = 2  # number of normal stacking sound effects
 NUM_PERFECT_STACK_SFX = 20  # number of perfect stacking sound effects
 NUM_EXPAND_SFX = 2  # number of expand sound effects
+
+ARIAL_BLACK_PATH = "assets/fonts/Arial-Black.ttf"  # font path

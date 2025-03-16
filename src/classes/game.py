@@ -5,6 +5,7 @@ import os
 
 from constants import *
 
+from classes.ui import UI
 from classes.background import Background
 from classes.gradient import Gradient
 from classes.platform import Platform
@@ -37,6 +38,9 @@ class Game:
         
         self.load_sound_effects()
         self.setup()
+
+        # load ui
+        self.ui = UI()
     
     def load_sound_effects(self):
         for i in range(1, NUM_NORMAL_STACK_SFX + 1):
@@ -185,3 +189,5 @@ class Game:
         if not self.gameover:
             self.plat.update(delta_time)
             self.plat.draw(self.screen)
+
+        self.ui.drawUi(self.screen, self.score)
