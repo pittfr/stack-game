@@ -16,11 +16,21 @@ def lightenColor(rgb, factor=1.2):
     lightens the given RGB color by a specified factor
     
     rgb: tuple of (r, g, b) values
-    factor: lightening factor
+    factor: lightening factor (should be > 1.0)
     returns a tuple of lightened (r, g, b) values
     """
     return tuple(max(0, min(255, int(c * factor))) for c in rgb)
+
+def darkenColor(rgb, factor=0.8):
+    """
+    darkens the given RGB color by a specified factor
     
+    rgb: tuple of (r, g, b) values
+    factor: darkening factor (should be < 1.0)
+    returns a tuple of darkened (r, g, b) values
+    """
+    return tuple(max(0, min(255, int(c * factor))) for c in rgb)
+
 def desaturateColor(rgb, factor=0.5):
     """
     desaturates the given RGB color by blending it with its grayscale equivalent

@@ -2,15 +2,48 @@ import pygame
 import time
 
 from classes.ui.button import Button
+from utils.utils import ease_in_out, darkenColor
 from constants import *
 
 class UI:
+    button_click_sound = None
+    
+    @staticmethod
+    def createButton(pos, image=None, image_hover=None, action=None, scale=1.0, 
+                    text="", font=None, text_color=(255, 255, 255), 
+                    text_hover_color=None, bg_color=None, bg_hover_color=None, 
+                    padding=(0, 0), border_radius=5, background_transparent=False, with_sound=True):
+        """static helper method to create buttons with consistent styling"""
+        sound = UI.button_click_sound if with_sound else None
+        
+        return Button(
+            pos=pos, 
+            image=image, 
+            image_hover=image_hover, 
+            action=action, 
+            scale=scale,
+            text=text, 
+            font=font, 
+            text_color=text_color,
+            text_hover_color=text_hover_color,
+            bg_color=bg_color,
+            bg_hover_color=bg_hover_color,
+            padding=padding,
+            border_radius=border_radius,
+            background_transparent=background_transparent,
+            sound=sound
+        )
+    
     def __init__(self, game):
         self.game = game # reference to the game
         self.score_font = pygame.font.Font(SCORE_FONT, 100)
         self.regularFont = pygame.font.Font(LIGHT_FONT, 60)
+        self.menuOptionFont = pygame.font.Font(HAIRLINE_FONT, 40)
         
-
+        # set the button click sound from the game's sound manager
+        if UI.button_click_sound is None and game.sound_manager.button_click_sfx:
+            UI.button_click_sound = game.sound_manager.button_click_sfx[0]
+        
         self.last_score = -1 # last score to know when to re-render
         self.score_surface = None
         self.score_rect = None
@@ -20,15 +53,13 @@ class UI:
         self.score_animation_start_time = 0
         self.score_animation_duration = 0.25 # seconds
         
-        # blur animation properties
-        self.blur_surface = None
-        self.blur_animating = False
-        self.blur_animation_start_time = 0
-        self.blur_animation_duration = 0.1  # seconds
-        self.max_blur_strength = 8  # maximum blur strength
-        self.current_blur_strength = 0
-        self.last_screen_capture = None
-        self.blur_levels = []  # initialize this property at start
+        # darkening animation properties
+        self.darkening_animating = False
+        self.darkening_animation_start_time = 0
+        self.darkening_animation_duration = 0.3  # seconds
+        self.darkening_surface = None
+        self.darkening_alpha = 0  # 0-255, 0 is transparent, 255 is fully dark
+        self.target_darkening_alpha = 128  # medium darkness when paused
 
         # load settings icon
         try:
@@ -51,20 +82,76 @@ class UI:
         except pygame.error as e:
             print(f"Error loading assets/images/pauseIcon/pause_solid_hover.png: {e}")
 
-        self.pauseButton = Button(
-            pos=(10, 10),
+        self.pauseButton = UI.createButton(
+            pos=(35, 10),
             image=self.pauseIcon,
             image_hover=self.pauseIconHover,
+            scale=0.15,
+            with_sound=False,
             action=self.game.togglePause,
-            scale=0.15
         )
 
-    def isAnyButtonHovered(self):
-        return self.pauseButton.hovered
+        self.resumeButton = UI.createButton(
+            pos=(WINDOW_WIDTH // 2, 325),
+            text="Resume",
+            font=self.menuOptionFont,
+            text_color=(255, 255, 255),
+            text_hover_color=(200, 200, 200),
+            background_transparent=True,
+            action=self.game.togglePause,
+            with_sound=False,
+        )
+
+        self.restartButton = UI.createButton(
+            pos=(WINDOW_WIDTH // 2, 375),
+            text="Restart game",
+            font=self.menuOptionFont,
+            text_color=(255, 255, 255),
+            text_hover_color=(200, 200, 200),
+            background_transparent=True,
+            action=self.game.setup,
+            with_sound=True,
+        )
+
+        self.settingsButton = UI.createButton(
+            pos=(WINDOW_WIDTH // 2, 425),
+            text="Settings",
+            font=self.menuOptionFont,
+            text_color=(255, 255, 255),
+            text_hover_color=(200, 200, 200),
+            background_transparent=True,
+            action=self.game.toggleSettings,
+            with_sound=True,
+        )
+
+    def isAnyVisibleButtonHovered(self):
+        """check if any visible button is currently hovered."""
+        # update the pause button's hover state first
+        mouse_pos = pygame.mouse.get_pos()
+        
+        # only check the pause button when not paused, as it's the only visible button then
+        if not self.game.paused:
+            self.pauseButton.hovered = self.pauseButton.rect.collidepoint(mouse_pos)
+            return self.pauseButton.hovered
+        else:
+            # when paused, check both resume and restart buttons
+            self.resumeButton.hovered = self.resumeButton.rect.collidepoint(mouse_pos)
+            self.restartButton.hovered = self.restartButton.rect.collidepoint(mouse_pos)
+            self.settingsButton.hovered = self.settingsButton.rect.collidepoint(mouse_pos)
+
+            return self.resumeButton.hovered or self.restartButton.hovered or self.settingsButton.hovered
 
     def drawPauseButton(self, screen):
         self.pauseButton.update()
         self.pauseButton.draw(screen)
+
+    def drawPauseMenu(self, screen):
+        self.resumeButton.update()
+        self.restartButton.update()
+        self.settingsButton.update()
+        self.resumeButton.draw(screen)
+        self.restartButton.draw(screen)
+        self.settingsButton.draw(screen)
 
     def drawScore(self, screen, score):
         just_reached_one = (score == 1 and self.last_score <= 0)
@@ -95,137 +182,84 @@ class UI:
                 temp_surface.set_alpha(opacity)
                 screen.blit(temp_surface, self.score_rect)
             else:
-                screen.blit(self.score_surface, self.score_rect)
+                # create a darker version of the score when paused
+                if self.game.paused or self.darkening_animating:
+                    # calculate darkness factor based on darkening alpha
+                    darkness_factor = max(0.4, 1.0 - (self.darkening_alpha / 255) * 0.5)
+                    
+                    # starting with white (255, 255, 255)
+                    dimmed_color = darkenColor((255, 255, 255), darkness_factor)
+                    
+                    # render with the darker color
+                    dark_score_surface = self.score_font.render(f"{score}", True, dimmed_color)
+                    screen.blit(dark_score_surface, self.score_rect)
+                else:
+                    screen.blit(self.score_surface, self.score_rect)
 
     def handlePauseStateChange(self, is_pausing):
         """called by game when pause state changes"""
+        self.startDarkeningAnimation(is_pausing)
+    
+    def startDarkeningAnimation(self, is_pausing):
+        """start darkening animation when pausing or unpausing"""
+        self.darkening_animating = True
+        self.darkening_animation_start_time = time.time()
+        
         if is_pausing:
-            # capture screen
-            self.captureScreen()
-            
-            # start blur in animation
-            self.startBlurAnimation(True)
-            
-            self.blur_surface = self.applyBoxBlur(self.last_screen_capture, 4)
-            self.precomputeBlurs()
+            # going from transparent to dark
+            self.darkening_alpha = 0
         else:
-            # start blur out animation
-            self.startBlurAnimation(False)
+            # going from dark to transparent
+            self.darkening_alpha = self.target_darkening_alpha
     
-    def captureScreen(self):
-        """capture the current state of the screen for blurring"""
-        self.last_screen_capture = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-        self.last_screen_capture.blit(self.game.screen, (0, 0))
-    
-    def applyBoxBlur(self, surface, strength):
-        """apply blur effect to a surface using box blur
-        strength: 0 to 10, 0 = no blur, 10 = max blur"""
-        if strength <= 0:
-            return surface.copy()
-            
-        width, height = surface.get_size()
+    def updateDarkening(self):
+        """update the darkening effect during animation"""
+        if not self.darkening_animating:
+            return
         
-        # calculate scale factor based on blur strength
-        scale_factor = max(1.5, strength * 0.8)
+        elapsed_time = time.time() - self.darkening_animation_start_time
+        progress = min(1.0, elapsed_time / self.darkening_animation_duration)
         
-        # scale the surface down to speed up the blur effect
-
-        medium_size = (int(width * 0.6), int(height * 0.6))
-        medium_surface = pygame.transform.smoothscale(surface, medium_size)
-
-        small_size = (max(2, int(width // scale_factor)), max(2, int(height // scale_factor)))
-        small_surface = pygame.transform.smoothscale(medium_surface, small_size)
-
-        medium_size2 = (int(width * 0.8), int(height * 0.8))
-        medium_result = pygame.transform.smoothscale(small_surface, medium_size2)
+        # apply easing for smoother animation
+        progress = ease_in_out(progress)
         
-        # scale the surface back up to the original size
-
-        result = pygame.transform.smoothscale(medium_result, (width, height))
-        
-        return result
-
-    def precomputeBlurs(self):
-        """pre-compute blur levels with higher quality and more steps"""
-        self.blur_levels = []
-        # add the original screen capture
-        if self.last_screen_capture:
-            self.blur_levels.append(self.last_screen_capture.copy())
-            
-            very_light_blur = self.applyBoxBlur(self.last_screen_capture, 1.5)
-            self.blur_levels.append(very_light_blur)
-            
-            light_blur = self.applyBoxBlur(self.last_screen_capture, 3)
-            self.blur_levels.append(light_blur)
-            
-            medium_blur = self.applyBoxBlur(self.last_screen_capture, 4.5)
-            self.blur_levels.append(medium_blur)
-            
-            strong_blur = self.applyBoxBlur(self.last_screen_capture, 6)
-            self.blur_levels.append(strong_blur)
-            
-            max_blur = self.applyBoxBlur(self.last_screen_capture, 8)
-            self.blur_levels.append(max_blur)
-    
-    def startBlurAnimation(self, blur_in=True):
-        """start blur animation either fading in or out"""
-        self.blur_animating = True
-        self.blur_animation_start_time = time.time()
-        if blur_in:
-            self.current_blur_strength = 0  # start with no blur
+        if self.game.paused:
+            # animating to dark
+            self.darkening_alpha = int(progress * self.target_darkening_alpha)
         else:
-            self.current_blur_strength = self.max_blur_strength  # start with full blur
-
-    def updateBlur(self):
-        """update the blur effect based on animation progress, using precomputed levels"""
-        if self.blur_animating and self.last_screen_capture:
-            elapsed_time = time.time() - self.blur_animation_start_time
-            progress = min(1.0, elapsed_time / self.blur_animation_duration)
-            
-            if self.game.paused:  # blurring in
-                normalized_strength = progress
-            else:  # blurring out
-                normalized_strength = 1 - progress
-            
-            # use precomputed blur levels or lerp between them
-            if hasattr(self, 'blur_levels') and self.blur_levels:
-                index = min(len(self.blur_levels) - 1, 
-                           int(normalized_strength * (len(self.blur_levels) - 1)))
-                self.blur_surface = self.blur_levels[index]
-            
-            # animation completion check
-            if progress >= 1.0:
-                self.blur_animating = False
-                if not self.game.paused:
-                    self.last_screen_capture = None
-                    self.blur_levels = []  # clear precomputed blurs
+            # animating to transparent
+            self.darkening_alpha = int((1 - progress) * self.target_darkening_alpha)
+        
+        if progress >= 1.0:
+            self.darkening_animating = False
     
-    def drawBlurEffect(self, screen):
-        """draw blur effect and pause overlay"""
-        if self.blur_surface:
-            # draw the blurred screen
-            screen.blit(self.blur_surface, (0, 0))
+    def drawDarkeningEffect(self, screen):
+        """draw the darkening overlay on the screen"""
+        if self.darkening_alpha <= 0:
+            return
             
-            # add darkening overlay
-            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 50))  # semi-transparent black
-            screen.blit(overlay, (0, 0))
+        if self.darkening_surface is None:
+            self.darkening_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        
+        self.darkening_surface.fill((0, 0, 0, self.darkening_alpha))
+        screen.blit(self.darkening_surface, (0, 0))
 
     def drawUi(self, screen, score, paused):
-        if self.blur_animating:
-            self.updateBlur()
+        if self.darkening_animating:
+            self.updateDarkening()
 
-        # handle the blurred background and pause overlay
-        if (self.game.paused or self.blur_animating) and self.blur_surface:
-            self.drawBlurEffect(screen)
-            
+        if self.game.paused or self.darkening_animating:
+            self.drawDarkeningEffect(screen)
+
             # if paused, show pause overlay text
             if self.game.paused and not self.game.settings_open:
                 pause_font = pygame.font.Font(LIGHT_FONT, 60)
                 pause_text = pause_font.render("Game Paused", True, (255, 255, 255))
                 pause_rect = pause_text.get_rect(center=(WINDOW_WIDTH // 2, 250))
                 screen.blit(pause_text, pause_rect)
-        
+
+                self.drawPauseMenu(screen)
+
         self.drawScore(screen, score)
 
         if not paused:

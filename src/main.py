@@ -11,15 +11,6 @@ except pygame.error as e:
     print(f"Failed to initialize Pygame: {e}")
     exit(1)
 
-# initialize mixer
-try:
-    pygame.mixer.init()
-except pygame.error as e:
-    if "WASAPI can't find requested audio endpoint" in str(e):
-        print("No sound device connected. Sound will be disabled.")
-    else:
-        print(f"Failed to initialize mixer: {e}")
-
 print(FRAMERATE)
 
 # main game loop
@@ -36,5 +27,7 @@ while game.running:
     game.draw_game(delta_time)
     pygame.display.flip()
 
-pygame.mixer.quit()
+if game.sound_manager:
+    game.sound_manager.shutdown()
+
 pygame.quit()

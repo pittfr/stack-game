@@ -5,6 +5,7 @@ import os
 
 from constants import *
 
+from classes.sound.sound_manager import Sound
 from classes.ui.ui_manager import UI
 from classes.background import Background
 from classes.gradient import Gradient
@@ -36,56 +37,12 @@ class Game:
         self.clock = pygame.time.Clock()
         self.previous_mouse_state = (0, 0, 0)
 
-        # load sound effects
-        self.stackingSFXs = []
-        self.perfectStackingSFXs = []
-        self.expandSFXs = []
-        self.pauseGameSFX = []
-        self.resumeGameSFX = []
-        self.buttonClickSFX = []
+        self.sound_manager = Sound()
         
-        self.loadSoundEffects()
         self.setup()
 
         # load ui
         self.ui = UI(self)
-    
-    def loadSoundEffects(self):
-        for i in range(1, NUM_NORMAL_STACK_SFX + 1):
-            try:
-                self.stackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/normalStack/stack{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/normalStack/{i}.wav: {e}")
-
-        for i in range(1, NUM_PERFECT_STACK_SFX + 1):
-            try:
-                self.perfectStackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/perfectStack/perfect{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/perfectStack/{i}.wav: {e}")
-
-        for i in range(1, NUM_EXPAND_SFX + 1):
-            try:
-                self.expandSFXs.append(pygame.mixer.Sound(f"assets/SFX/expandPlatform/expand{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/expandPlatform/expand{i}.wav: {e}")
-
-        for i in range(1, NUM_PAUSE_GAME_SFX + 1):
-            try:
-                self.pauseGameSFX.append(pygame.mixer.Sound(f"assets/SFX/pauseGame/pause{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/pauseGame/pause{i}.wav: {e}")
-
-        for i in range(1, NUM_RESUME_GAME_SFX + 1):
-            try:
-                self.resumeGameSFX.append(pygame.mixer.Sound(f"assets/SFX/resumeGame/resume{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/resumeGame/resume{i}.wav: {e}")
-        
-        for i in range(1, NUM_BUTTON_CLICK_SFX + 1):
-            try:
-                self.buttonClickSFX.append(pygame.mixer.Sound(f"assets/SFX/buttonClick/click{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/buttonClick/click{i}.wav: {e}")
     
     def setup(self):
         self.numPlats = NSPLATS
@@ -120,11 +77,9 @@ class Game:
         isPausing = not self.paused
 
         if isPausing: # opening settings
-            if len(self.pauseGameSFX) > 0:
-                random.choice(self.pauseGameSFX).play()
+            self.sound_manager.play_pause_game()
         else: # closing settings
-            if len(self.resumeGameSFX) > 0:
-                random.choice(self.resumeGameSFX).play()
+            self.sound_manager.play_resume_game()
         
         self.paused = isPausing
         
@@ -134,7 +89,6 @@ class Game:
 
     def toggleSettings(self):                
         self.settings_open = not self.settings_open
-        self.paused = self.settings_open
         print(f"Settings {'opened' if self.settings_open else 'closed'}!")
 
     def handleEvents(self):
@@ -149,13 +103,18 @@ class Game:
                 if event.key == pygame.K_SPACE:
                     if not self.gameover and not self.settings_open and not self.paused:
                         self.handlePlatformPlacement()
+                elif event.key == pygame.K_ESCAPE:
+                    if self.settings_open:
+                        self.toggleSettings()
+                    else:
+                        self.togglePause()
                 elif event.key == pygame.K_r:
                     self.gameover = True
 
         current_mouse_state = pygame.mouse.get_pressed()
 
         if current_mouse_state[0] and not self.previous_mouse_state[0]:
-            if not self.gameover and not self.settings_open and not self.paused and not self.ui.isAnyButtonHovered():
+            if not self.gameover and not self.settings_open and not self.paused and not self.ui.isAnyVisibleButtonHovered():
                 self.handlePlatformPlacement()
 
         self.previous_mouse_state = current_mouse_state
@@ -181,20 +140,18 @@ class Game:
                 self.plat.perfectAlign(lastPlat)
                 self.perfectStackCounter += 1
                 
-                if len(self.perfectStackingSFXs) > 0: 
-                    self.perfectStackingSFXs[(self.perfectStackCounter % len(self.perfectStackingSFXs)) - 1].play()
+                self.sound_manager.play_perfect_stack(self.perfectStackCounter)
 
                 # check if the player has stacked enough perfect platforms to expand the platform
                 if self.perfectStackCounter >= PERFECT_STACKS_TO_EXPAND:
                     nextPlatWidth, nextPlatDepth, expandDirection = self.plat.expand()
 
-                    if len(self.expandSFXs) > 0 and expandDirection != 0: # if the platform expanded
-                        random.choice(self.expandSFXs).play() 
+                    if expandDirection != 0: # if the platform expanded
+                        self.sound_manager.play_expand()
 
             else:
                 self.perfectStackCounter = 0
-                if len(self.stackingSFXs) > 0:
-                    random.choice(self.stackingSFXs).play()
+                self.sound_manager.play_normal_stack()
                 if nextPlatWidth != self.plat.width or nextPlatDepth != self.plat.depth:
                     self.plat.width = nextPlatWidth
                     self.plat.depth = nextPlatDepth
