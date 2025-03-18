@@ -1,4 +1,4 @@
-# Stack Game (pygame Recreation)
+# Stack Game (pygame recreation)
 
 ## Overview
 **Stack!** is a simple yet engaging stacking game where players must place platforms on top of each other as accurately as possible. The game features sound effects, colorful gradients, and a scoring system that rewards precision.
