@@ -1,8 +1,8 @@
 from utils.system_utils import getCurrentMonitorFramerate, count_sounds_in_directory
 
 # constants
-WINDOW_WIDTH = 650
-WINDOW_HEIGHT = 1000
+WINDOW_WIDTH = 585
+WINDOW_HEIGHT = 900
 
 FRAMERATE = getCurrentMonitorFramerate()  # get the monitor's refresh rate
 

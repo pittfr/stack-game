@@ -1,13 +1,27 @@
 import pygame
 import time
 
+from classes.ui.label import Label
 from classes.ui.button import Button
+from classes.ui.slider import Slider
 from utils.utils import ease_in_out, darkenColor
 from constants import *
 
 class UI:
     button_click_sound = None
     
+    @staticmethod
+    def createLabel(pos, text, font, text_color=(255, 255, 255), 
+                visible=True):
+        """static helper method to create labels with consistent styling"""
+        return Label(
+            pos=pos,
+            text=text,
+            font=font,
+            text_color=text_color,
+            visible=visible
+        )
+
     @staticmethod
     def createButton(pos, image=None, image_hover=None, action=None, scale=1.0, 
                     text="", font=None, text_color=(255, 255, 255), 
@@ -34,11 +48,33 @@ class UI:
             sound=sound
         )
     
+    @staticmethod
+    def createSlider(pos, width, height, min_value=0.0, max_value=1.0, initial_value=0.5,
+                    handle_color=(255, 255, 255), handle_hover_color=(200, 200, 200),
+                    track_color=(100, 100, 100), track_fill_color=(150, 150, 150),
+                    border_radius=5, action=None):
+        """static helper method to create sliders with consistent styling"""
+        return Slider(
+            pos=pos,
+            width=width,
+            height=height,
+            min_value=min_value,
+            max_value=max_value,
+            initial_value=initial_value,
+            handle_color=handle_color,
+            handle_hover_color=handle_hover_color,
+            track_color=track_color,
+            track_fill_color=track_fill_color,
+            border_radius=border_radius,
+            action=action
+        )
+
     def __init__(self, game):
         self.game = game # reference to the game
         self.score_font = pygame.font.Font(SCORE_FONT, 100)
         self.regularFont = pygame.font.Font(LIGHT_FONT, 60)
         self.menuOptionFont = pygame.font.Font(HAIRLINE_FONT, 40)
+        self.goBackFont = pygame.font.Font(HAIRLINE_FONT, 30)
         
         # set the button click sound from the game's sound manager
         if UI.button_click_sound is None and game.sound_manager.button_click_sfx:
@@ -82,6 +118,13 @@ class UI:
         except pygame.error as e:
             print(f"Error loading assets/images/pauseIcon/pause_solid_hover.png: {e}")
 
+        self.MenuLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 2, 175),
+            text="Game Paused",
+            font=self.regularFont,
+            text_color=(255, 255, 255),
+        )
+
         self.pauseButton = UI.createButton(
             pos=(35, 10),
             image=self.pauseIcon,
@@ -92,7 +135,7 @@ class UI:
         )
 
         self.resumeButton = UI.createButton(
-            pos=(WINDOW_WIDTH // 2, 325),
+            pos=(WINDOW_WIDTH // 2, 300),
             text="Resume",
             font=self.menuOptionFont,
             text_color=(255, 255, 255),
@@ -103,7 +146,7 @@ class UI:
         )
 
         self.restartButton = UI.createButton(
-            pos=(WINDOW_WIDTH // 2, 375),
+            pos=(WINDOW_WIDTH // 2, 350),
             text="Restart game",
             font=self.menuOptionFont,
             text_color=(255, 255, 255),
@@ -114,7 +157,7 @@ class UI:
         )
 
         self.settingsButton = UI.createButton(
-            pos=(WINDOW_WIDTH // 2, 425),
+            pos=(WINDOW_WIDTH // 2, 400),
             text="Settings",
             font=self.menuOptionFont,
             text_color=(255, 255, 255),
@@ -122,6 +165,43 @@ class UI:
             background_transparent=True,
             action=self.game.toggleSettings,
             with_sound=True,
+        )
+
+        self.settingsGoBackButton = UI.createButton(
+            pos=(75, 20),
+            text="Go back",
+            font=self.goBackFont,
+            text_color=(255, 255, 255),
+            text_hover_color=(200, 200, 200),
+            background_transparent=True,
+            action=self.game.toggleSettings,
+            with_sound=True,
+        )
+
+        self.volumeLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 4, 300),
+            text="Volume",
+            font=self.menuOptionFont,
+            text_color=(255, 255, 255),
+        )
+
+        self.volumePercentageLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 1.2, 300),
+            text="100%",
+            font=self.menuOptionFont,
+            text_color=(255, 255, 255),
+        )
+
+        self.volumeSlider = UI.createSlider(
+            pos=((WINDOW_WIDTH // 2) + (WINDOW_WIDTH // 20), 330),
+            width=200,
+            height=10,
+            initial_value=game.sound_manager.sfx_volume,
+            handle_color=(255, 255, 255),
+            handle_hover_color=(220, 220, 220),
+            track_color=(70, 70, 70),
+            track_fill_color=(120, 120, 120),
+            action=game.sound_manager.set_sfx_volume
         )
 
     def isAnyVisibleButtonHovered(self):
@@ -146,12 +226,35 @@ class UI:
         self.pauseButton.draw(screen)
 
     def drawPauseMenu(self, screen):
+        if(self.MenuLabel.text != "Game Paused"):
+            self.MenuLabel.setText("Game Paused")
+        self.MenuLabel.draw(screen)
+
         self.resumeButton.update()
-        self.restartButton.update()
-        self.settingsButton.update()
         self.resumeButton.draw(screen)
+
+        self.restartButton.update()
         self.restartButton.draw(screen)
+
+        self.settingsButton.update()
         self.settingsButton.draw(screen)
+
+    def drawSettingsMenu(self, screen):
+        if(self.MenuLabel.text != "Settings"):
+            self.MenuLabel.setText("Settings")
+        self.MenuLabel.draw(screen)
+
+        self.settingsGoBackButton.update()
+        self.settingsGoBackButton.draw(screen)
+        
+        self.volumeSlider.update()
+        self.volumeSlider.draw(screen)
+
+        volumePercentage = self.volumeSlider.getValue() * 100
+
+        self.volumePercentageLabel.setText(f"{int(volumePercentage)}%")
+        self.volumeLabel.draw(screen)
+        self.volumePercentageLabel.draw(screen)
 
     def drawScore(self, screen, score):
         just_reached_one = (score == 1 and self.last_score <= 0)
@@ -252,12 +355,9 @@ class UI:
             self.drawDarkeningEffect(screen)
 
             # if paused, show pause overlay text
-            if self.game.paused and not self.game.settings_open:
-                pause_font = pygame.font.Font(LIGHT_FONT, 60)
-                pause_text = pause_font.render("Game Paused", True, (255, 255, 255))
-                pause_rect = pause_text.get_rect(center=(WINDOW_WIDTH // 2, 250))
-                screen.blit(pause_text, pause_rect)
-
+            if(self.game.settings_open):
+                self.drawSettingsMenu(screen)
+            elif self.game.paused and not self.game.settings_open:
                 self.drawPauseMenu(screen)
 
         self.drawScore(screen, score)

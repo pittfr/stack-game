@@ -32,6 +32,7 @@ class Sound:
                 pygame.mixer.init()
             return True
         except pygame.error as e:
+            self.muted = True
             if "WASAPI can't find requested audio endpoint" in str(e):
                 print("No sound device connected. Sound will be disabled.")
             else:
@@ -88,7 +89,7 @@ class Sound:
         if self.muted:
             volume = 0.0
         else:
-            volume = self.master_volume * self.sfx_volume
+            volume = self.sfx_volume
         
         # apply volume to each sound category
         for sound_list in [

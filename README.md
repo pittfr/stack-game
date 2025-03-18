@@ -42,6 +42,8 @@ pip install pygame numpy pywin32
 │   │   │   ├── sound_manager.py # sound management system
 │   │   ├── ui                   # UI handling
 │   │   │   ├── button.py        # button handling
+│   │   │   ├── label.py         # label handling
+│   │   │   ├── slider.py        # slider handling
 │   │   │   ├── ui_manager.py    # UI management
 │   ├── utils                    # utility functions
 │   │   ├── utils.py             # general utilities
