@@ -8,6 +8,7 @@ class Button:
         self.action = action
         self.hovered = False
         self.clicked = False
+        self.previous_mouse_state = False
         self.is_text_button = image is None
         self.background_transparent = background_transparent
         self.border_radius = border_radius
@@ -62,16 +63,20 @@ class Button:
         mouse_pos = pygame.mouse.get_pos()
         self.hovered = self.rect.collidepoint(mouse_pos)
         
-        if self.hovered:
-            mouse_clicked = pygame.mouse.get_pressed()[0]
-            if mouse_clicked and not self.clicked:
-                self.clicked = True
-                if self.sound:
-                    self.sound.play()
-                if self.action:
-                    self.action()
-            elif not mouse_clicked:
-                self.clicked = False
+        current_mouse_state = pygame.mouse.get_pressed()[0]
+        
+        mouse_just_clicked = current_mouse_state and not self.previous_mouse_state
+        
+        if self.hovered and mouse_just_clicked:
+            self.clicked = True
+            if self.sound:
+                self.sound.play()
+            if self.action:
+                self.action()
+        else:
+            self.clicked = False
+            
+        self.previous_mouse_state = current_mouse_state
                 
     def draw(self, surface):
         if not self.is_text_button: # draw image button

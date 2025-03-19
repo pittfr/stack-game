@@ -38,6 +38,7 @@ pip install pygame numpy pywin32
 │   │   ├── gradient.py          # gradient handling
 │   │   ├── platform.py          # platform representation
 │   │   ├── tower.py             # tower management
+│   │   ├── state_manager.py     # game state management
 │   │   ├── sound                # sound handling
 │   │   │   ├── sound_manager.py # sound management system
 │   │   ├── ui                   # UI handling

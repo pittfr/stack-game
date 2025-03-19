@@ -1,6 +1,8 @@
 import pygame
 import time
 
+from classes.state_manager import GameState
+
 from classes.ui.label import Label
 from classes.ui.button import Button
 from classes.ui.slider import Slider
@@ -71,10 +73,9 @@ class UI:
 
     def __init__(self, game):
         self.game = game # reference to the game
-        self.score_font = pygame.font.Font(SCORE_FONT, 100)
-        self.regularFont = pygame.font.Font(LIGHT_FONT, 60)
-        self.menuOptionFont = pygame.font.Font(HAIRLINE_FONT, 40)
-        self.goBackFont = pygame.font.Font(HAIRLINE_FONT, 30)
+
+        # load fonts
+        self.loadFonts()
         
         # set the button click sound from the game's sound manager
         if UI.button_click_sound is None and game.sound_manager.button_click_sfx:
@@ -97,7 +98,24 @@ class UI:
         self.darkening_alpha = 0  # 0-255, 0 is transparent, 255 is fully dark
         self.target_darkening_alpha = 128  # medium darkness when paused
 
-        # load settings icon
+        # load icons
+        self.loadIcons()
+
+        # create elements
+        self.createMenuElements()
+        self.createGameoverElements()
+        self.createSettingsPauseMenuElements()
+
+    def loadFonts(self):
+        self.gameTitleFont = pygame.font.Font(LIGHT_FONT, 100)
+        self.tapToStartFont = pygame.font.Font(HAIRLINE_FONT, 35)
+        self.tapToRestartFont = pygame.font.Font(HAIRLINE_FONT, 45)
+        self.score_font = pygame.font.Font(SCORE_FONT, 100)
+        self.regularFont = pygame.font.Font(LIGHT_FONT, 60)
+        self.menuOptionFont = pygame.font.Font(HAIRLINE_FONT, 40)
+        self.goBackFont = pygame.font.Font(HAIRLINE_FONT, 30)
+
+    def loadIcons(self):
         try:
             self.settingsIcon = pygame.image.load("assets/images/settingsIcon/gear_solid.png").convert_alpha()
         except pygame.error as e:
@@ -118,6 +136,40 @@ class UI:
         except pygame.error as e:
             print(f"Error loading assets/images/pauseIcon/pause_solid_hover.png: {e}")
 
+    def createMenuElements(self):
+        self.gameTitleLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 2, 100),
+            text="STACK",
+            font=self.gameTitleFont,
+            text_color=(255, 255, 255),
+        )
+
+        self.tapToStartLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 2, 250),
+            text="TAP TO START",
+            font=self.tapToStartFont,
+            text_color=(255, 255, 255),
+        )
+
+        self.settingsIconButton = UI.createButton(
+            pos=(WINDOW_WIDTH - 40, 10),
+            image=self.settingsIcon,
+            image_hover=self.settingsIconHover,
+            scale=0.1,
+            with_sound=True,
+            action=self.game.toggleSettings,
+        )
+    
+    def createGameoverElements(self):
+        self.tapToRestartLabel = UI.createLabel(
+            pos=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 200),
+            text="TAP TO RESTART",
+            font=self.tapToRestartFont,
+            text_color=(255, 255, 255),
+        )
+
+    def createSettingsPauseMenuElements(self):
+
         self.MenuLabel = UI.createLabel(
             pos=(WINDOW_WIDTH // 2, 175),
             text="Game Paused",
@@ -125,11 +177,11 @@ class UI:
             text_color=(255, 255, 255),
         )
 
-        self.pauseButton = UI.createButton(
-            pos=(35, 10),
+        self.pauseIconButton = UI.createButton(
+            pos=(30, 10),
             image=self.pauseIcon,
             image_hover=self.pauseIconHover,
-            scale=0.15,
+            scale=0.1,
             with_sound=False,
             action=self.game.togglePause,
         )
@@ -152,7 +204,7 @@ class UI:
             text_color=(255, 255, 255),
             text_hover_color=(200, 200, 200),
             background_transparent=True,
-            action=self.game.setup,
+            action=self.game.restartGame,
             with_sound=True,
         )
 
@@ -196,34 +248,44 @@ class UI:
             pos=((WINDOW_WIDTH // 2) + (WINDOW_WIDTH // 20), 330),
             width=200,
             height=10,
-            initial_value=game.sound_manager.sfx_volume,
+            initial_value=self.game.sound_manager.sfx_volume,
             handle_color=(255, 255, 255),
             handle_hover_color=(220, 220, 220),
             track_color=(70, 70, 70),
             track_fill_color=(120, 120, 120),
-            action=game.sound_manager.set_sfx_volume
+            action=self.game.sound_manager.set_sfx_volume
         )
 
-    def isAnyVisibleButtonHovered(self):
-        """check if any visible button is currently hovered."""
+    def isAnyUnwantedButtonHovered(self):
+        """check if any unwanted button is hovered"""
         # update the pause button's hover state first
         mouse_pos = pygame.mouse.get_pos()
         
-        # only check the pause button when not paused, as it's the only visible button then
-        if not self.game.paused:
-            self.pauseButton.hovered = self.pauseButton.rect.collidepoint(mouse_pos)
-            return self.pauseButton.hovered
-        else:
-            # when paused, check both resume and restart buttons
-            self.resumeButton.hovered = self.resumeButton.rect.collidepoint(mouse_pos)
-            self.restartButton.hovered = self.restartButton.rect.collidepoint(mouse_pos)
-            self.settingsButton.hovered = self.settingsButton.rect.collidepoint(mouse_pos)
+        if self.game.state_manager.isState(GameState.PLAYING):
+            self.pauseIconButton.hovered = self.pauseIconButton.rect.collidepoint(mouse_pos)
+            return self.pauseIconButton.hovered
+        elif self.game.state_manager.isState(GameState.MENU):
+            self.settingsIconButton.hovered = self.settingsIconButton.rect.collidepoint(mouse_pos)
+            return self.settingsIconButton.hovered
 
-            return self.resumeButton.hovered or self.restartButton.hovered or self.settingsButton.hovered
+        return False
 
-    def drawPauseButton(self, screen):
-        self.pauseButton.update()
-        self.pauseButton.draw(screen)
+    def drawMenu(self, screen):
+        """draw the menu screen elements"""
+        self.gameTitleLabel.draw(screen)
+        self.tapToStartLabel.draw(screen)
+
+        self.settingsIconButton.update()
+        self.settingsIconButton.draw(screen)
+
+    def drawPlayingScreen(self, screen, score):
+        """draw the playing screen elements"""
+        self.pauseIconButton.update()
+        self.pauseIconButton.draw(screen)
+
+    def drawGameOverScreen(self, screen):
+        """draw the game over screen elements"""
+        self.tapToRestartLabel.draw(screen)
 
     def drawPauseMenu(self, screen):
         if(self.MenuLabel.text != "Game Paused"):
@@ -285,8 +347,7 @@ class UI:
                 temp_surface.set_alpha(opacity)
                 screen.blit(temp_surface, self.score_rect)
             else:
-                # create a darker version of the score when paused
-                if self.game.paused or self.darkening_animating:
+                if self.game.state_manager.isState(GameState.PAUSED) or self.game.state_manager.isState(GameState.SETTINGS) or self.darkening_animating:
                     # calculate darkness factor based on darkening alpha
                     darkness_factor = max(0.4, 1.0 - (self.darkening_alpha / 255) * 0.5)
                     
@@ -298,6 +359,8 @@ class UI:
                     screen.blit(dark_score_surface, self.score_rect)
                 else:
                     screen.blit(self.score_surface, self.score_rect)
+
+    # darkening effect methods
 
     def handlePauseStateChange(self, is_pausing):
         """called by game when pause state changes"""
@@ -326,7 +389,8 @@ class UI:
         # apply easing for smoother animation
         progress = ease_in_out(progress)
         
-        if self.game.paused:
+        if self.game.state_manager.isState(GameState.PAUSED) or \
+            self.game.state_manager.isState(GameState.SETTINGS):
             # animating to dark
             self.darkening_alpha = int(progress * self.target_darkening_alpha)
         else:
@@ -348,19 +412,29 @@ class UI:
         screen.blit(self.darkening_surface, (0, 0))
 
     def drawUi(self, screen, score, paused):
+        if self.game.state_manager.current_state not in [GameState.LOADING, GameState.MENU]:
+            self.drawScore(screen, score)
+        
+        # update darkening animation if active
         if self.darkening_animating:
             self.updateDarkening()
+        # force full darkness when in a darkened state without animation
+        elif self.game.state_manager.isState(GameState.PAUSED) or self.game.state_manager.isState(GameState.SETTINGS):
+            self.darkening_alpha = self.target_darkening_alpha
 
-        if self.game.paused or self.darkening_animating:
+        # draw darkening effect if paused or settings or animating
+        if self.game.state_manager.isState(GameState.PAUSED) or self.game.state_manager.isState(GameState.SETTINGS) or self.darkening_animating:
             self.drawDarkeningEffect(screen)
 
-            # if paused, show pause overlay text
-            if(self.game.settings_open):
+            # show the appropriate menu based on state
+            if self.game.state_manager.isState(GameState.SETTINGS):
                 self.drawSettingsMenu(screen)
-            elif self.game.paused and not self.game.settings_open:
+            elif self.game.state_manager.isState(GameState.PAUSED):
                 self.drawPauseMenu(screen)
 
-        self.drawScore(screen, score)
-
-        if not paused:
-            self.drawPauseButton(screen)
+        if self.game.state_manager.isState(GameState.MENU):
+            self.drawMenu(screen)
+        elif self.game.state_manager.isState(GameState.PLAYING):
+            self.drawPlayingScreen(screen, score)
+        elif self.game.state_manager.isState(GameState.GAMEOVER):
+            self.drawGameOverScreen(screen)

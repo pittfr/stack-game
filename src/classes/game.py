@@ -2,15 +2,20 @@ import pygame
 import numpy as np
 import random
 import os
+import time
 
 from constants import *
-
-from classes.sound.sound_manager import Sound
+from classes.state_manager import StateManager, GameState
 from classes.ui.ui_manager import UI
+from classes.sound.sound_manager import Sound
 from classes.background import Background
 from classes.gradient import Gradient
 from classes.platform import Platform
 from classes.tower import Tower
+
+def ease_in_out(t):
+    """smooth easing function for animations"""
+    return 0.5 * (1 - np.cos(t * np.pi))
 
 class Game:
     def __init__(self):
@@ -28,26 +33,38 @@ class Game:
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
 
         self.perfectAlignmentMode = False
-
-        self.gameover = False
         self.running = True
-        self.paused = False
-        self.settings_open = False
 
         self.clock = pygame.time.Clock()
         self.previous_mouse_state = (0, 0, 0)
 
         self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
         
-        self.setup()
+        self.clock = pygame.time.Clock()
+        self.previous_mouse_state = (0, 0, 0)
 
-        # load ui
+        self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
+        
+        self.clock = pygame.time.Clock()
+        self.previous_mouse_state = (0, 0, 0)
+
+        self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
+        
+        # Set initial state to LOADING
+        self.state_manager.changeState(GameState.LOADING)
+        
+        # load UI after setup
         self.ui = UI(self)
     
     def setup(self):
         self.numPlats = NSPLATS
         self.score = self.numPlats - NSPLATS
-        
+
+        self.nextPlatWidth = SBASEWIDTH
+        self.nextPlatDepth = SBASEDEPTH
         self.initialColor = (random.randint(MINCVALUE, MAXCVALUE), 
                             random.randint(MINCVALUE, MAXCVALUE), 
                             random.randint(MINCVALUE, MAXCVALUE))
@@ -65,34 +82,66 @@ class Game:
         self.previous_mouse_state = (0, 0, 0)
         self.clock = pygame.time.Clock()
 
-        self.gameover = False
-        self.running = True
-        self.paused = False
-        self.settings_open = False
+        self.state_manager.changeState(GameState.MENU)
 
         self.perfectStackCounter = 0
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
 
+    def restartGame(self):
+        """reset the game"""
+        
+        self.numPlats = NSPLATS
+        self.score = self.numPlats - NSPLATS
+        self.platVelocity = STARTVEL
+        self.perfectStackCounter = 0
+        
+        self.nextPlatWidth = SBASEWIDTH
+        self.nextPlatDepth = SBASEDEPTH
+        
+        self.initialColor = (random.randint(MINCVALUE, MAXCVALUE), 
+                             random.randint(MINCVALUE, MAXCVALUE), 
+                             random.randint(MINCVALUE, MAXCVALUE))
+
+        self.background = Background()
+        self.background.gradients = []
+        self.background.gradients.append(Gradient(self.initialColor, self.background.gradients, self.numPlats))
+        self.background.setup(self.numPlats, self.distance)
+
+        self.tower = Tower(NSPLATS, self.initialColor)
+
+        self.plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, self.platVelocity, self.numPlats, True)
+        self.plat.setup(Gradient.getCurrentColor(self.numPlats, self.background.gradients))
+        self.plat.align(self.tower.getLastPlat())
+        
+        self.state_manager.changePreviousState(GameState.MENU)
+        self.state_manager.changeState(GameState.PLAYING)
+
     def togglePause(self):
-        isPausing = not self.paused
-
-        if isPausing: # opening settings
+        if self.state_manager.isState(GameState.PLAYING):
+            self.state_manager.changeState(GameState.PAUSED)
             self.sound_manager.play_pause_game()
-        else: # closing settings
+        elif self.state_manager.isState(GameState.PAUSED):
+            self.state_manager.changeState(GameState.PLAYING)
             self.sound_manager.play_resume_game()
-        
-        self.paused = isPausing
-        
-        self.ui.handlePauseStateChange(isPausing)
 
-        print(f"Game is {'paused' if self.paused else 'resumed'}")
+    def toggleSettings(self):
+        print(f"Current state: {self.state_manager.current_state.name}")
+        print(f"Previous state: {self.state_manager.previous_state.name}")
 
-    def toggleSettings(self):                
-        self.settings_open = not self.settings_open
-        print(f"Settings {'opened' if self.settings_open else 'closed'}!")
+        if self.state_manager.isState(GameState.MENU):
+            self.state_manager.changeState(GameState.SETTINGS)
+
+        elif self.state_manager.isState(GameState.PAUSED):
+            self.state_manager.changeState(GameState.SETTINGS)
+
+        elif self.state_manager.isState(GameState.SETTINGS):
+            if self.state_manager.previous_state == GameState.PAUSED:
+                self.state_manager.changeState(GameState.PAUSED)
+            elif self.state_manager.previous_state == GameState.MENU:
+                self.state_manager.changeState(GameState.MENU)
 
     def handleEvents(self):
-        # check if Caps Lock is on instead of Shift
+        # check if Caps Lock is on
         caps_lock_state = pygame.key.get_mods() & pygame.KMOD_CAPS
         self.perfectAlignmentMode = caps_lock_state > 0
 
@@ -100,22 +149,35 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    if not self.gameover and not self.settings_open and not self.paused:
+                if event.key == pygame.K_SPACE: # space key
+                    if self.state_manager.isState(GameState.PLAYING): # if the game is playing, place the platform
                         self.handlePlatformPlacement()
-                elif event.key == pygame.K_ESCAPE:
-                    if self.settings_open:
+                    elif self.state_manager.isState(GameState.MENU): # if the game is in the menu, start playing
+                        self.state_manager.changeState(GameState.PLAYING)
+                    elif self.state_manager.isState(GameState.GAMEOVER): # if the game is over, restart the game
+                        self.setup()
+
+                elif event.key == pygame.K_ESCAPE: # escape key
+                    if self.state_manager.isState(GameState.SETTINGS): # if the game is in the settings, go back to the pause menu
                         self.toggleSettings()
-                    else:
+                        self.sound_manager.button_click_sfx[0].play()
+                    elif self.state_manager.isState(GameState.PLAYING): # if the game is playing, pause the game
                         self.togglePause()
-                elif event.key == pygame.K_r:
-                    self.gameover = True
+                    elif self.state_manager.isState(GameState.PAUSED): # if the game is paused, resume the game
+                        self.togglePause()
+
+                elif event.key == pygame.K_r: # r key
+                        self.restartGame()
 
         current_mouse_state = pygame.mouse.get_pressed()
 
         if current_mouse_state[0] and not self.previous_mouse_state[0]:
-            if not self.gameover and not self.settings_open and not self.paused and not self.ui.isAnyVisibleButtonHovered():
+            if self.state_manager.isState(GameState.PLAYING) and not self.ui.isAnyUnwantedButtonHovered():
                 self.handlePlatformPlacement()
+            elif self.state_manager.isState(GameState.MENU) and not self.ui.isAnyUnwantedButtonHovered():
+                self.state_manager.changeState(GameState.PLAYING)
+            elif self.state_manager.isState(GameState.GAMEOVER): # if the game is over, restart the game
+                self.setup()
 
         self.previous_mouse_state = current_mouse_state
 
@@ -179,24 +241,33 @@ class Game:
                 self.current_distance = 0  # reset current distance after starting the transition
                 self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
         else:
-            self.gameover = True
+            self.state_manager.changeState(GameState.GAMEOVER)
 
     def handleGameover(self):
-        self.gameover = True
+        self.state_manager.changeState(GameState.GAMEOVER)
         os.system("cls")
         print(f"Game Over!\nRestarting...")
         self.setup()
 
-    def draw_game(self, delta_time):
-        self.background.draw(self.screen, delta_time)
-
-        if not self.paused:
-            self.tower.update(FRAMERATE, delta_time)
-            self.plat.update(delta_time)
+    def drawGame(self, delta_time):
+        """draw game elements based on current state"""
         
-        self.tower.draw(self.screen)
+        # loading screen
+        if self.state_manager.isState(GameState.LOADING):
+            self.setup()
+        else:
+            self.background.draw(self.screen, delta_time)
 
-        if not self.gameover:
-            self.plat.draw(self.screen)
+            if self.state_manager.isState(GameState.PLAYING):
+                self.tower.update(FRAMERATE, delta_time)
+                self.plat.update(delta_time)
+            
+            self.tower.draw(self.screen)
 
-        self.ui.drawUi(self.screen, self.score, self.paused)
+            if not self.state_manager.isState(GameState.GAMEOVER) and \
+               not self.state_manager.isState(GameState.MENU):
+                self.plat.draw(self.screen)
+
+            # pass state info to ui
+            is_paused = self.state_manager.isState(GameState.PAUSED) or self.state_manager.isState(GameState.SETTINGS)
+            self.ui.drawUi(self.screen, self.score, is_paused)
