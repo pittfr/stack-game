@@ -79,7 +79,6 @@ class Game:
         self.plat.setup(Gradient.getCurrentColor(self.numPlats, self.background.gradients))
         self.tower = Tower(NSPLATS, self.initialColor)
 
-        self.previous_mouse_state = (0, 0, 0)
         self.clock = pygame.time.Clock()
 
         self.state_manager.changeState(GameState.MENU)
