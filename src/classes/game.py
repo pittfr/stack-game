@@ -2,13 +2,20 @@ import pygame
 import numpy as np
 import random
 import os
+import time
 
 from constants import *
-
+from classes.state_manager import StateManager, GameState
+from classes.ui.ui_manager import UI
+from classes.sound.sound_manager import Sound
 from classes.background import Background
 from classes.gradient import Gradient
 from classes.platform import Platform
 from classes.tower import Tower
+
+def ease_in_out(t):
+    """smooth easing function for animations"""
+    return 0.5 * (1 - np.cos(t * np.pi))
 
 class Game:
     def __init__(self):
@@ -17,49 +24,47 @@ class Game:
         pygame.display.set_caption("Stack!")
         
         # game variables
-        self.platVelocity = STARTVEL
         self.numPlats = NSPLATS
         self.score = self.numPlats - NSPLATS
+        self.platVelocity = STARTVEL
         self.perfectStackCounter = 0
-        self.gameover = False
         self.nextPlatWidth = SBASEWIDTH
         self.nextPlatDepth = SBASEDEPTH
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
+
         self.perfectAlignmentMode = False
         self.running = True
+
         self.clock = pygame.time.Clock()
         self.previous_mouse_state = (0, 0, 0)
 
-        # load sound effects
-        self.stackingSFXs = []
-        self.perfectStackingSFXs = []
-        self.expandSFXs = []
+        self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
         
-        self.load_sound_effects()
-        self.setup()
-    
-    def load_sound_effects(self):
-        for i in range(1, NUM_NORMAL_STACK_SFX + 1):
-            try:
-                self.stackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/normalStack/stack{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/normalStack/{i}.wav: {e}")
+        self.clock = pygame.time.Clock()
+        self.previous_mouse_state = (0, 0, 0)
 
-        for i in range(1, NUM_PERFECT_STACK_SFX + 1):
-            try:
-                self.perfectStackingSFXs.append(pygame.mixer.Sound(f"assets/SFX/perfectStack/perfect{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/perfectStack/{i}.wav: {e}")
+        self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
+        
+        self.clock = pygame.time.Clock()
+        self.previous_mouse_state = (0, 0, 0)
 
-        for i in range(1, NUM_EXPAND_SFX + 1):
-            try:
-                self.expandSFXs.append(pygame.mixer.Sound(f"assets/SFX/expandPlatform/expand{i}.wav"))
-            except pygame.error as e:
-                print(f"Error loading assets/SFX/expandPlatform/expand{i}.wav: {e}")
+        self.sound_manager = Sound()
+        self.state_manager = StateManager(self)
+        
+        # Set initial state to LOADING
+        self.state_manager.changeState(GameState.LOADING)
+        
+        # load UI after setup
+        self.ui = UI(self)
     
     def setup(self):
         self.numPlats = NSPLATS
-        
+        self.score = self.numPlats - NSPLATS
+
+        self.nextPlatWidth = SBASEWIDTH
+        self.nextPlatDepth = SBASEDEPTH
         self.initialColor = (random.randint(MINCVALUE, MAXCVALUE), 
                             random.randint(MINCVALUE, MAXCVALUE), 
                             random.randint(MINCVALUE, MAXCVALUE))
@@ -75,14 +80,67 @@ class Game:
         self.tower = Tower(NSPLATS, self.initialColor)
 
         self.clock = pygame.time.Clock()
-        self.running = True
-        self.gameover = False
-        self.score = self.numPlats - NSPLATS
+
+        self.state_manager.changeState(GameState.MENU)
+
         self.perfectStackCounter = 0
         self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)
 
-    def handle_events(self):
-        # check if Caps Lock is on instead of Shift
+    def restartGame(self):
+        """reset the game"""
+        
+        self.numPlats = NSPLATS
+        self.score = self.numPlats - NSPLATS
+        self.platVelocity = STARTVEL
+        self.perfectStackCounter = 0
+        
+        self.nextPlatWidth = SBASEWIDTH
+        self.nextPlatDepth = SBASEDEPTH
+        
+        self.initialColor = (random.randint(MINCVALUE, MAXCVALUE), 
+                             random.randint(MINCVALUE, MAXCVALUE), 
+                             random.randint(MINCVALUE, MAXCVALUE))
+
+        self.background = Background()
+        self.background.gradients = []
+        self.background.gradients.append(Gradient(self.initialColor, self.background.gradients, self.numPlats))
+        self.background.setup(self.numPlats, self.distance)
+
+        self.tower = Tower(NSPLATS, self.initialColor)
+
+        self.plat = Platform(SBASEWIDTH, SBASEDEPTH, PHEIGHT, self.platVelocity, self.numPlats, True)
+        self.plat.setup(Gradient.getCurrentColor(self.numPlats, self.background.gradients))
+        self.plat.align(self.tower.getLastPlat())
+        
+        self.state_manager.changePreviousState(GameState.MENU)
+        self.state_manager.changeState(GameState.PLAYING)
+
+    def togglePause(self):
+        if self.state_manager.isState(GameState.PLAYING):
+            self.state_manager.changeState(GameState.PAUSED)
+            self.sound_manager.play_pause_game()
+        elif self.state_manager.isState(GameState.PAUSED):
+            self.state_manager.changeState(GameState.PLAYING)
+            self.sound_manager.play_resume_game()
+
+    def toggleSettings(self):
+        print(f"Current state: {self.state_manager.current_state.name}")
+        print(f"Previous state: {self.state_manager.previous_state.name}")
+
+        if self.state_manager.isState(GameState.MENU):
+            self.state_manager.changeState(GameState.SETTINGS)
+
+        elif self.state_manager.isState(GameState.PAUSED):
+            self.state_manager.changeState(GameState.SETTINGS)
+
+        elif self.state_manager.isState(GameState.SETTINGS):
+            if self.state_manager.previous_state == GameState.PAUSED:
+                self.state_manager.changeState(GameState.PAUSED)
+            elif self.state_manager.previous_state == GameState.MENU:
+                self.state_manager.changeState(GameState.MENU)
+
+    def handleEvents(self):
+        # check if Caps Lock is on
         caps_lock_state = pygame.key.get_mods() & pygame.KMOD_CAPS
         self.perfectAlignmentMode = caps_lock_state > 0
 
@@ -90,21 +148,39 @@ class Game:
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    if not self.gameover:
-                        self.handle_platform_placement()
-                elif event.key == pygame.K_r:
-                    self.gameover = True
+                if event.key == pygame.K_SPACE: # space key
+                    if self.state_manager.isState(GameState.PLAYING): # if the game is playing, place the platform
+                        self.handlePlatformPlacement()
+                    elif self.state_manager.isState(GameState.MENU): # if the game is in the menu, start playing
+                        self.state_manager.changeState(GameState.PLAYING)
+                    elif self.state_manager.isState(GameState.GAMEOVER): # if the game is over, restart the game
+                        self.setup()
+
+                elif event.key == pygame.K_ESCAPE: # escape key
+                    if self.state_manager.isState(GameState.SETTINGS): # if the game is in the settings, go back to the pause menu
+                        self.toggleSettings()
+                        self.sound_manager.button_click_sfx[0].play()
+                    elif self.state_manager.isState(GameState.PLAYING): # if the game is playing, pause the game
+                        self.togglePause()
+                    elif self.state_manager.isState(GameState.PAUSED): # if the game is paused, resume the game
+                        self.togglePause()
+
+                elif event.key == pygame.K_r: # r key
+                        self.restartGame()
 
         current_mouse_state = pygame.mouse.get_pressed()
 
         if current_mouse_state[0] and not self.previous_mouse_state[0]:
-            if not self.gameover:
-                self.handle_platform_placement()
+            if self.state_manager.isState(GameState.PLAYING) and not self.ui.isAnyUnwantedButtonHovered():
+                self.handlePlatformPlacement()
+            elif self.state_manager.isState(GameState.MENU) and not self.ui.isAnyUnwantedButtonHovered():
+                self.state_manager.changeState(GameState.PLAYING)
+            elif self.state_manager.isState(GameState.GAMEOVER): # if the game is over, restart the game
+                self.setup()
 
         self.previous_mouse_state = current_mouse_state
 
-    def handle_platform_placement(self):
+    def handlePlatformPlacement(self):
         lastPlat = self.tower.getLastPlat()
         nextPlatWidth, nextPlatDepth, perfectPlacement = self.tower.getTrimming(self.plat, lastPlat)
         nextPlatWidth, nextPlatDepth = round(nextPlatWidth, DECIMALPLACES), round(nextPlatDepth, DECIMALPLACES)
@@ -125,20 +201,18 @@ class Game:
                 self.plat.perfectAlign(lastPlat)
                 self.perfectStackCounter += 1
                 
-                if len(self.perfectStackingSFXs) > 0: 
-                    self.perfectStackingSFXs[(self.perfectStackCounter % len(self.perfectStackingSFXs)) - 1].play()
+                self.sound_manager.play_perfect_stack(self.perfectStackCounter)
 
                 # check if the player has stacked enough perfect platforms to expand the platform
                 if self.perfectStackCounter >= PERFECT_STACKS_TO_EXPAND:
                     nextPlatWidth, nextPlatDepth, expandDirection = self.plat.expand()
 
-                    if len(self.expandSFXs) > 0 and expandDirection != 0: # if the platform expanded
-                        random.choice(self.expandSFXs).play() 
+                    if expandDirection != 0: # if the platform expanded
+                        self.sound_manager.play_expand()
 
             else:
                 self.perfectStackCounter = 0
-                if len(self.stackingSFXs) > 0:
-                    random.choice(self.stackingSFXs).play()
+                self.sound_manager.play_normal_stack()
                 if nextPlatWidth != self.plat.width or nextPlatDepth != self.plat.depth:
                     self.plat.width = nextPlatWidth
                     self.plat.depth = nextPlatDepth
@@ -160,27 +234,39 @@ class Game:
 
             self.plat.align(lastPlat)
 
-            print(self.score)
-
             # check if the background should transition to a new gradient
             if random.random() < BACKGROUND_ANIMATION_CHANCE and self.background.transition_progress >= 1:
                 self.background.startTransition(self.numPlats, self.distance)
                 self.current_distance = 0  # reset current distance after starting the transition
                 self.distance = random.randint(MIN_DISTANCE, MAX_DISTANCE)  # generate a new random distance
         else:
-            self.gameover = True
+            self.state_manager.changeState(GameState.GAMEOVER)
 
-    def handle_gameover(self):
-        self.gameover = True
+    def handleGameover(self):
+        self.state_manager.changeState(GameState.GAMEOVER)
         os.system("cls")
-        print(f"Game Over! Score: {self.score} \nRestarting...")
+        print(f"Game Over!\nRestarting...")
         self.setup()
 
-    def draw_game(self, delta_time):
-        self.background.draw(self.screen, delta_time)
+    def drawGame(self, delta_time):
+        """draw game elements based on current state"""
+        
+        # loading screen
+        if self.state_manager.isState(GameState.LOADING):
+            self.setup()
+        else:
+            self.background.draw(self.screen, delta_time)
 
-        self.tower.draw(FRAMERATE, delta_time, self.screen)
+            if self.state_manager.isState(GameState.PLAYING):
+                self.tower.update(FRAMERATE, delta_time)
+                self.plat.update(delta_time)
+            
+            self.tower.draw(self.screen)
 
-        if not self.gameover:
-            self.plat.update(delta_time)
-            self.plat.draw(self.screen)
+            if not self.state_manager.isState(GameState.GAMEOVER) and \
+               not self.state_manager.isState(GameState.MENU):
+                self.plat.draw(self.screen)
+
+            # pass state info to ui
+            is_paused = self.state_manager.isState(GameState.PAUSED) or self.state_manager.isState(GameState.SETTINGS)
+            self.ui.drawUi(self.screen, self.score, is_paused)

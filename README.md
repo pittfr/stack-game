@@ -3,6 +3,13 @@
 ## Overview
 **Stack!** is a simple yet engaging stacking game where players must place platforms on top of each other as accurately as possible. The game features sound effects, colorful gradients, and a scoring system that rewards precision.
 
+## Installation
+Make sure you have **Python 3** installed on your system. Then, install the required dependencies:
+
+```sh
+pip install pygame numpy pywin32
+```
+
 ## How to Play
 1. Run the game using:
    ```sh
@@ -14,44 +21,65 @@
 5. The game ends when the block becomes too small to continue.
 
 ## Controls
-- **Mouse Click** / **Spacebar** - Places the moving block
+
+- **Spacebar** / **Mouse Click** - Places the moving block
+- **Escape** - Pause game / Access menu
+- **Caps Lock** - Enable perfect placement mode
+- **R** - Restart the game
 
 ## Project Structure
 ```
 .
-├── src
-│   ├── main.py                # entry point for the game
-│   ├── constants.py           # constant values used throughout the game
-│   ├── classes
-│   │   ├── background.py      # background management
-│   │   ├── gradient.py        # gradient handling
-│   │   ├── platform.py        # platform representation
-│   │   ├── tower.py           # tower management
-│   │   ├── game.py            # game logic
-│   └── utils
-│       ├── utils.py           # general utility functions
-│       ├── system_utils.py    # system-related utilities
-├── assets
-│   └── SFX
-│       ├── normalStack        # sound effects for normal stacking
-│       │   ├── stack1.wav
-│       │   ├── stack2.wav
-│       ├── perfectStack       # sound effects for perfect stacking
-│       │   ├── perfect1.wav
-│       │   ├── perfect2.wav
-│       │   ├── ... (more sounds)
-│       ├── expandPlatform     # sound effects for platform expansion
-│       │   ├── expand1.wav
-│       │   ├── expand2.wav
-├── .gitignore                 # git ignore file
-├── README.md                  # project documentation
-```
-
-## Installation
-Make sure you have **Python 3** installed on your system. Then, install the required dependencies by running in your terminal:
-
-```sh
-pip install pygame numpy pywin32
+├── src                          # source code
+│   ├── main.py                  # entry point for the game
+│   ├── constants.py             # constant values used throughout the game
+│   ├── classes                  # game-related classes
+│   │   ├── background.py        # background management
+│   │   ├── game.py              # game logic
+│   │   ├── gradient.py          # gradient handling
+│   │   ├── platform.py          # platform representation
+│   │   ├── tower.py             # tower management
+│   │   ├── state_manager.py     # game state management
+│   │   ├── sound                # sound handling
+│   │   │   ├── sound_manager.py # sound management system
+│   │   ├── ui                   # UI handling
+│   │   │   ├── button.py        # button handling
+│   │   │   ├── label.py         # label handling
+│   │   │   ├── slider.py        # slider handling
+│   │   │   ├── ui_manager.py    # UI management
+│   ├── utils                    # utility functions
+│   │   ├── utils.py             # general utilities
+│   │   ├── system_utils.py      # system-related utilities
+├── assets                       # game assets
+│   ├── SFX                      # sound effects
+│   │   ├── expandPlatform       # sounds for platform expansion
+│   │   │   ├── expand1.wav
+│   │   │   ├── expand2.wav
+│   │   ├── normalStack          # sounds for normal stacking
+│   │   │   ├── stack1.wav
+│   │   │   ├── stack2.wav
+│   │   ├── perfectStack         # sounds for perfect stacking
+│   │   │   ├── perfect1.wav
+│   │   │   ├── perfect2.wav
+│   │   │   ├── ... (more sounds)
+│   │   ├── pauseGame            # sounds for pausing the game
+│   │   │   ├── pause1.wav
+│   │   ├── resumeGame           # sounds for resuming the game
+│   │   │   ├── resume1.wav
+│   │   ├── buttonClick          # sounds for button clicks
+│   │   │   ├── click1.wav
+│   ├── fonts                    # font files
+│   │   ├── Arial-Black.ttf
+│   │   ├── Cresta-Light.ttf
+│   │   ├── Cresta-Regular.ttf
+│   │   ├── Cresta-Hairline.ttf
+│   ├── images                   # image assets
+│   │   ├── settingsIcon         # settings icons
+│   │   │   ├── gear_solid.png
+│   │   │   ├── gear_solid_hover.png
+│   │   ├── pauseIcon            # pause icons
+│   │   │   ├── pause_solid.png
+│   │   │   ├── pause_solid_hover.png
 ```
 
 ## Contributing

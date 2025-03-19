@@ -59,7 +59,7 @@ class Tower:
     def getTowers(self): # returns the array of objects
         return self.platforms
 
-    def update(self, framerate, delta_time, screen):
+    def update(self, framerate, delta_time):
         for plat in (self.platforms):
             plat.update(delta_time)
             
@@ -136,7 +136,6 @@ class Tower:
     def getLastPlat(self): # returns the last platform in the tower
         return self.platforms[-1]
 
-    def draw(self, framerate, delta_time, screen):
-        self.update(framerate, delta_time, screen)
+    def draw(self, screen):
         for plat in (self.platforms):
             plat.draw(screen)
